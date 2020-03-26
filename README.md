@@ -87,3 +87,14 @@ tableStore:
 </dependency>
 ```
 
+
+
+## 参考资料
+
+表格存储
+
+https://help.aliyun.com/document_detail/27280.html
+
+多条件组合查询
+
+https://help.aliyun.com/document_detail/100422.html
