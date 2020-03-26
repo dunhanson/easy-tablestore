@@ -37,6 +37,8 @@ public class Start {
 
 ## 配置文件
 
+tableStore.yaml
+
 ```yaml
 tableStore:
   #默认全局参数
@@ -71,6 +73,19 @@ tableStore:
       - dochtmlcon
     #默认分页大小，覆盖default
     limit: 30
+```
+
+log4j.properties
+
+```properties
+### 设置###
+log4j.rootLogger = info, stdout
+
+### 输出信息到控制抬 ###
+log4j.appender.stdout = org.apache.log4j.ConsoleAppender
+log4j.appender.stdout.Target = System.out
+log4j.appender.stdout.layout = org.apache.log4j.PatternLayout
+log4j.appender.stdout.layout.ConversionPattern = [%-5p] %d{yyyy-MM-dd HH:mm:ss,SSS} method:%l%n%m%n
 ```
 
 
