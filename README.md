@@ -73,3 +73,17 @@ tableStore:
     limit: 30
 ```
 
+
+
+## Maven
+
+`仅限公司内部项目配置生效`
+
+```xml
+<dependency>
+    <groupId>site.dunhanson.aliyun</groupId>
+    <artifactId>easy-tablestore</artifactId>
+    <version>2020.0326.1548</version>
+</dependency>
+```
+
