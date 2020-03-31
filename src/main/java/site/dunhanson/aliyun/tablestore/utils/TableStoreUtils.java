@@ -8,11 +8,14 @@ import com.alicloud.openservices.tablestore.model.search.SearchQuery;
 import com.alicloud.openservices.tablestore.model.search.SearchRequest;
 import com.alicloud.openservices.tablestore.model.search.SearchResponse;
 import com.google.gson.Gson;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import site.dunhanson.aliyun.tablestore.entity.BasicInfo;
 import site.dunhanson.aliyun.tablestore.entity.Page;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 /**
@@ -20,6 +23,7 @@ import java.util.*;
  * @date 2020.03.20
  * @description TableStore工具类
  */
+@Slf4j
 public class TableStoreUtils {
     private static final String FILE_PATH = "tableStore.yaml";
     private static final String TABLE_STORE = "tableStore";
@@ -145,6 +149,8 @@ public class TableStoreUtils {
     }
 
     public static <T> Page<T> search(String alias, SearchQuery searchQuery, Class<T> clazz, int index, List<String> columns) {
+        //开始时间
+        LocalDateTime startTime = LocalDateTime.now();
         //基础信息
         BasicInfo aliasBasicInfo = getBasicInfo(alias);
         //设置默认参数
@@ -184,6 +190,16 @@ public class TableStoreUtils {
         Page<T> page = getListFromSearchResponse(resp, clazz, limit);
         //设置偏移数
         page.setOffset(offset);
+        //结束时间
+        LocalDateTime endTime = LocalDateTime.now();
+        //日志打印
+        StringBuffer logStr = new StringBuffer();
+        logStr.append("---------> Easy TableStore Search --------->");
+        logStr.append("\n");
+        logStr.append("ElapsedTime:" + ChronoUnit.MILLIS.between(startTime, endTime));
+        logStr.append("\n");
+        logStr.append("<--------- Easy TableStore Search <---------");
+        log.info(logStr.toString());
         return page;
     }
 
