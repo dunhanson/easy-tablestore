@@ -391,6 +391,7 @@ public class TableStoreUtils {
         }
     }
 
+
     /**
      * 查询字符串
      * @param query
@@ -413,17 +414,23 @@ public class TableStoreUtils {
             MatchQuery temp = (MatchQuery)query;
             stringBuffer.append(temp.getFieldName());
             stringBuffer.append("=");
+            stringBuffer.append("\"");
             stringBuffer.append(temp.getText());
+            stringBuffer.append("\"");
         } else if (query instanceof MatchPhraseQuery) {
             MatchPhraseQuery temp = (MatchPhraseQuery)query;
             stringBuffer.append(temp.getFieldName());
             stringBuffer.append("=");
+            stringBuffer.append("\"");
             stringBuffer.append(temp.getText());
+            stringBuffer.append("\"");
         } else if (query instanceof TermQuery) {
             TermQuery temp = (TermQuery)query;
             stringBuffer.append(temp.getFieldName());
             stringBuffer.append("=");
+            stringBuffer.append("\"");
             stringBuffer.append(temp.getTerm().getValue());
+            stringBuffer.append("\"");
         } else if (query instanceof TermsQuery) {
             TermsQuery temp = (TermsQuery)query;
             String fieldName = temp.getFieldName();
@@ -433,7 +440,9 @@ public class TableStoreUtils {
                 for(ColumnValue columnValue : terms) {
                     stringBuffer.append(fieldName);
                     stringBuffer.append("=");
+                    stringBuffer.append("\"");
                     stringBuffer.append(columnValue.getValue());
+                    stringBuffer.append("\"");
                     stringBuffer.append(" OR ");
                 }
                 stringBuffer = new StringBuffer(stringBuffer.substring(0, stringBuffer.lastIndexOf(" OR ")));
@@ -443,7 +452,9 @@ public class TableStoreUtils {
             PrefixQuery temp = (PrefixQuery)query;
             stringBuffer.append(temp.getFieldName());
             stringBuffer.append("=");
+            stringBuffer.append("\"");
             stringBuffer.append(temp.getPrefix());
+            stringBuffer.append("\"");
         } else if (query instanceof RangeQuery) {
             RangeQuery temp = (RangeQuery)query;
             Object from = temp.getFrom();
@@ -451,18 +462,27 @@ public class TableStoreUtils {
             if(from != null) {
                 stringBuffer.append(temp.getFieldName());
                 stringBuffer.append(">");
+                stringBuffer.append("\"");
                 stringBuffer.append(from);
+                stringBuffer.append("\"");
             }
             if(to != null) {
+                if(from != null) {
+                    stringBuffer.append(" AND ");
+                }
                 stringBuffer.append(temp.getFieldName());
                 stringBuffer.append("<");
+                stringBuffer.append("\"");
                 stringBuffer.append(to);
+                stringBuffer.append("\"");
             }
         } else if (query instanceof WildcardQuery) {
             WildcardQuery temp = (WildcardQuery)query;
             stringBuffer.append(temp.getFieldName());
             stringBuffer.append("=");
+            stringBuffer.append("\"");
             stringBuffer.append(temp.getValue());
+            stringBuffer.append("\"");
         } else if (query instanceof BoolQuery) {
             BoolQuery temp = (BoolQuery)query;
             List<Query> mustQueries = temp.getMustQueries();
@@ -489,7 +509,9 @@ public class TableStoreUtils {
                 }
                 for(Query getQuery : mustNotQueries) {
                     stringBuffer.append("!");
+                    stringBuffer.append("(");
                     stringBuffer.append(getQueryString(getQuery, false));
+                    stringBuffer.append(")");
                     stringBuffer.append(" AND ");
                 }
                 stringBuffer = new StringBuffer(stringBuffer.substring(0, stringBuffer.lastIndexOf(" AND ")));

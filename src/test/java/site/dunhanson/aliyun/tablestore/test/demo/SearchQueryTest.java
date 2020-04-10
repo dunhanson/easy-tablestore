@@ -89,6 +89,7 @@ public class SearchQueryTest {
         System.out.println("复合条件组合查询-MustQueries:" + TableStoreUtils.getQueryString(getBoolQueryMustQueries()));
         System.out.println("复合条件组合查询-MustNotQueries:" + TableStoreUtils.getQueryString(getBoolQueryMustNotQueries()));
         System.out.println("复合条件组合查询-ShouldQueries:" + TableStoreUtils.getQueryString(getBoolQueryShouldQueries()));
+        System.out.println("复合条件组合查询-FilterQueries:" + TableStoreUtils.getQueryString(getBoolQueryFilterQueries()));
     }
 
     @Test
@@ -98,6 +99,12 @@ public class SearchQueryTest {
         TableStoreUtils.search(searchQuery, Document.class).getList().forEach(obj->{
             System.out.println(obj.getDoctitle());
         });
+    }
+
+    public Query getBoolQueryFilterQueries() {
+        BoolQuery boolQuery = new BoolQuery();
+        boolQuery.setFilterQueries(Arrays.asList(getRangeQuery(), getMatchQuery()));
+        return boolQuery;
     }
 
     public Query getBoolQueryShouldQueries() {
