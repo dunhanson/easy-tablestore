@@ -2,11 +2,13 @@ package site.dunhanson.aliyun.tablestore.utils;
 
 import com.alicloud.openservices.tablestore.SyncClient;
 import com.alicloud.openservices.tablestore.model.Column;
+import com.alicloud.openservices.tablestore.model.ColumnValue;
 import com.alicloud.openservices.tablestore.model.PrimaryKeyColumn;
 import com.alicloud.openservices.tablestore.model.Row;
 import com.alicloud.openservices.tablestore.model.search.SearchQuery;
 import com.alicloud.openservices.tablestore.model.search.SearchRequest;
 import com.alicloud.openservices.tablestore.model.search.SearchResponse;
+import com.alicloud.openservices.tablestore.model.search.query.*;
 import com.google.gson.Gson;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -195,6 +197,8 @@ public class TableStoreUtils {
         //日志打印
         StringBuffer logStr = new StringBuffer();
         logStr.append("---------> Easy TableStore Search --------->");
+        logStr.append("\n");
+        logStr.append("Search:" + getQueryString(searchQuery.getQuery()));
         logStr.append("\n");
         logStr.append("ElapsedTime:" + ChronoUnit.MILLIS.between(startTime, endTime));
         logStr.append("\n");
@@ -385,5 +389,141 @@ public class TableStoreUtils {
                 aliasBasicInfo.setLimit(defaultBasicInfo.getLimit());
             }
         }
+    }
+
+    /**
+     * 查询字符串
+     * @param query
+     * @return
+     */
+    public static String getQueryString(Query query) {
+        return getQueryString(query, true);
+    }
+
+    /**
+     * 查询字符串
+     * @param query
+     * @return
+     */
+    public static String getQueryString(Query query, boolean top) {
+        StringBuffer stringBuffer = new StringBuffer();
+        if(query instanceof MatchAllQuery) {
+            stringBuffer.append("*" + "=" + "*");
+        } else if (query instanceof MatchQuery) {
+            MatchQuery temp = (MatchQuery)query;
+            stringBuffer.append(temp.getFieldName());
+            stringBuffer.append("=");
+            stringBuffer.append(temp.getText());
+        } else if (query instanceof MatchPhraseQuery) {
+            MatchPhraseQuery temp = (MatchPhraseQuery)query;
+            stringBuffer.append(temp.getFieldName());
+            stringBuffer.append("=");
+            stringBuffer.append(temp.getText());
+        } else if (query instanceof TermQuery) {
+            TermQuery temp = (TermQuery)query;
+            stringBuffer.append(temp.getFieldName());
+            stringBuffer.append("=");
+            stringBuffer.append(temp.getTerm().getValue());
+        } else if (query instanceof TermsQuery) {
+            TermsQuery temp = (TermsQuery)query;
+            String fieldName = temp.getFieldName();
+            List<ColumnValue> terms = temp.getTerms();
+            if(terms != null && terms.size() > 0) {
+                stringBuffer.append("(");
+                for(ColumnValue columnValue : terms) {
+                    stringBuffer.append(fieldName);
+                    stringBuffer.append("=");
+                    stringBuffer.append(columnValue.getValue());
+                    stringBuffer.append(" OR ");
+                }
+                stringBuffer = new StringBuffer(stringBuffer.substring(0, stringBuffer.lastIndexOf(" OR ")));
+                stringBuffer.append(")");
+            }
+        } else if (query instanceof PrefixQuery) {
+            PrefixQuery temp = (PrefixQuery)query;
+            stringBuffer.append(temp.getFieldName());
+            stringBuffer.append("=");
+            stringBuffer.append(temp.getPrefix());
+        } else if (query instanceof RangeQuery) {
+            RangeQuery temp = (RangeQuery)query;
+            Object from = temp.getFrom();
+            Object to = temp.getTo();
+            if(from != null) {
+                stringBuffer.append(temp.getFieldName());
+                stringBuffer.append(">");
+                stringBuffer.append(from);
+            }
+            if(to != null) {
+                stringBuffer.append(temp.getFieldName());
+                stringBuffer.append("<");
+                stringBuffer.append(to);
+            }
+        } else if (query instanceof WildcardQuery) {
+            WildcardQuery temp = (WildcardQuery)query;
+            stringBuffer.append(temp.getFieldName());
+            stringBuffer.append("=");
+            stringBuffer.append(temp.getValue());
+        } else if (query instanceof BoolQuery) {
+            BoolQuery temp = (BoolQuery)query;
+            List<Query> mustQueries = temp.getMustQueries();
+            List<Query> mustNotQueries = temp.getMustNotQueries();
+            List<Query> shouldQueries = temp.getShouldQueries();
+            List<Query> filterQueries = temp.getFilterQueries();
+            if(mustQueries != null && mustQueries.size() > 0) {
+                //多条件-
+                if(!top) {
+                    stringBuffer.append("(");
+                }
+                for(Query getQuery : mustQueries) {
+                    stringBuffer.append(getQueryString(getQuery, false));
+                    stringBuffer.append(" AND ");
+                }
+                stringBuffer = new StringBuffer(stringBuffer.substring(0, stringBuffer.lastIndexOf(" AND ")));
+                if(!top) {
+                    stringBuffer.append(")");
+                }
+            } else if(mustNotQueries != null && mustNotQueries.size() > 0) {
+                //多条件-并查询
+                if(!top) {
+                    stringBuffer.append("(");
+                }
+                for(Query getQuery : mustNotQueries) {
+                    stringBuffer.append("!");
+                    stringBuffer.append(getQueryString(getQuery, false));
+                    stringBuffer.append(" AND ");
+                }
+                stringBuffer = new StringBuffer(stringBuffer.substring(0, stringBuffer.lastIndexOf(" AND ")));
+                if(!top) {
+                    stringBuffer.append(")");
+                }
+            } else if(shouldQueries != null && shouldQueries.size() > 0) {
+                //多条件-或查询
+                if(!top) {
+                    stringBuffer.append("(");
+                }
+                for(Query getQuery : shouldQueries) {
+                    stringBuffer.append(getQueryString(getQuery, false));
+                    stringBuffer.append(" OR ");
+                }
+                stringBuffer = new StringBuffer(stringBuffer.substring(0, stringBuffer.lastIndexOf(" OR ")));
+                if(!top) {
+                    stringBuffer.append(")");
+                }
+            } else if(filterQueries != null && filterQueries.size() > 0) {
+                //多条件-或查询
+                if(!top) {
+                    stringBuffer.append("(");
+                }
+                for(Query getQuery : filterQueries) {
+                    stringBuffer.append(getQueryString(getQuery, false));
+                    stringBuffer.append(" OR ");
+                }
+                stringBuffer = new StringBuffer(stringBuffer.substring(0, stringBuffer.lastIndexOf(" OR ")));
+                if(!top) {
+                    stringBuffer.append(")");
+                }
+            }
+        }
+        return stringBuffer.toString();
     }
 }
