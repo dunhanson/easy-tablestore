@@ -1,10 +1,9 @@
 package site.dunhanson.aliyun.tablestore.utils;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import com.alicloud.openservices.tablestore.SyncClient;
-import com.alicloud.openservices.tablestore.model.Column;
-import com.alicloud.openservices.tablestore.model.ColumnValue;
-import com.alicloud.openservices.tablestore.model.PrimaryKeyColumn;
-import com.alicloud.openservices.tablestore.model.Row;
+import com.alicloud.openservices.tablestore.model.*;
 import com.alicloud.openservices.tablestore.model.search.SearchQuery;
 import com.alicloud.openservices.tablestore.model.search.SearchRequest;
 import com.alicloud.openservices.tablestore.model.search.SearchResponse;
@@ -16,6 +15,7 @@ import site.dunhanson.aliyun.tablestore.entity.BasicInfo;
 import site.dunhanson.aliyun.tablestore.entity.Page;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -35,6 +35,7 @@ public class TableStoreUtils {
     private static final String ACCESS_KEY_SECRET = "accessKeySecret";
     private static final String INSTANCE_NAME = "instanceName";
     private static final String TABLE_NAME = "tableName";
+    private static final String PRIMARY_KEY = "primaryKey";
     private static final String INDEX_NAME = "indexName";
     private static final String IGNORE_COLUMN = "ignoreColumn";
     private static final String LIMIT = "limit";
@@ -52,7 +53,7 @@ public class TableStoreUtils {
     public static BasicInfo getBasicInfo(String alias) {
         BasicInfo basicInfo = new BasicInfo();
         String[] arr = new String[]{
-                END_POINT, ACCESS_KEY_ID, ACCESS_KEY_SECRET, INSTANCE_NAME, TABLE_NAME, INDEX_NAME,
+                END_POINT, ACCESS_KEY_ID, ACCESS_KEY_SECRET, INSTANCE_NAME, TABLE_NAME, PRIMARY_KEY, INDEX_NAME,
                 IGNORE_COLUMN, LIMIT
         };
         for(int i = 0; i < arr.length; i++) {
@@ -68,6 +69,8 @@ public class TableStoreUtils {
                 basicInfo.setInstanceName((String)value);
             } else if(key.equals(TABLE_NAME)) {
                 basicInfo.setTableName((String)value);
+            } else if(key.equals(PRIMARY_KEY)) {
+                basicInfo.setPrimaryKey((List<String>) value);
             } else if(key.equals(INDEX_NAME)) {
                 basicInfo.setIndexName((List<String>) value);
             } else if(key.equals(IGNORE_COLUMN)) {
@@ -314,13 +317,24 @@ public class TableStoreUtils {
     }
 
     /**
+     * 根据对象获取别名（首字母小写）
+     * @param obj
+     * @return
+     */
+    public static String getAlias(Object obj) {
+        String alias = obj.getClass().getSimpleName();
+        alias = alias.substring(0,1).toLowerCase() + alias.substring(1);
+        return alias;
+    }
+
+    /**
      * 获取没有忽略字段的字段集合
      * @param clazz
      * @param ignoreColumns
      * @return
      */
     public static List<String> getNoIgnoreColumns(Class clazz, List<String> ignoreColumns) {
-        List<String> allColumns = getAllFieldName(clazz);
+        List<String> allColumns = getAllFieldName(clazz, true);
         allColumns.removeAll(ignoreColumns);
         return allColumns;
     }
@@ -348,13 +362,15 @@ public class TableStoreUtils {
     /**
      * 获取类的所有字段名
      * @param clazz
+     * @param humpToUnderline   是否需要 驼峰转下划线
      * @return
      */
-    public static List<String> getAllFieldName(Class clazz) {
+    public static List<String> getAllFieldName(Class clazz, boolean humpToUnderline) {
         List<String> list = new ArrayList<>();
         Field[] fields = clazz.getDeclaredFields();
         for(Field field : fields) {
-            list.add(field.getName());
+            String name = field.getName();
+            list.add(humpToUnderline ? humpToUnderline(name) : name);
         }
         return list;
     }
@@ -548,4 +564,131 @@ public class TableStoreUtils {
         }
         return stringBuffer.toString();
     }
+
+
+
+
+    // 增/删/改 操作
+
+    /**
+     * 新增（如果该记录存在则完成覆盖更新）
+     * @param obj
+     */
+    public static int insert(Object obj) {
+        // 获取表的配置信息
+        BasicInfo aliasBasicInfo = buildBasicInfo(getAlias(obj));
+
+        // 创建 SyncClient
+        SyncClient client = getSyncClient(aliasBasicInfo);
+
+        JSONObject jsonObject = (JSONObject) JSON.toJSON(obj);
+
+        // 构造主键
+        PrimaryKeyBuilder primaryKeyBuilder = PrimaryKeyBuilder.createPrimaryKeyBuilder();
+        List<String> primaryKeyList = aliasBasicInfo.getPrimaryKey();
+        for (String key : primaryKeyList) {
+            Object value = jsonObject.get(underlineToHump(key));
+            if (value.getClass().getSimpleName().equals("Long")) {
+                primaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromLong((Long) value));
+            } else {
+                primaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromString((String) value));
+            }
+        }
+        PrimaryKey primaryKey = primaryKeyBuilder.build();
+        RowPutChange rowPutChange = new RowPutChange(aliasBasicInfo.getTableName(), primaryKey);
+
+        // 设置其他属性
+        for (Map.Entry<String, Object> map : jsonObject.entrySet()) {
+            String key = map.getKey();
+            Object value = map.getValue();
+            key = humpToUnderline(key);     // 驼峰转下划线
+            if (!primaryKeyList.contains(key) && value != null) {       // 非主键 非空 判断
+                if (value.getClass().getSimpleName().equals("Long")) {      // 待完善 其他类型当成字符串处理，目前是够用的
+                    rowPutChange.addColumn(new Column(key, ColumnValue.fromLong((Long) value)));
+                } else if (value.getClass().getSimpleName().equals("String")) {
+                    rowPutChange.addColumn(new Column(key, ColumnValue.fromString((String) value)));
+                } else if (value.getClass().getSimpleName().equals("Boolean")) {
+                    rowPutChange.addColumn(new Column(key, ColumnValue.fromBoolean(Boolean.valueOf(value.toString()))));
+                } else if (value.getClass().getSimpleName().equals("Double")) {
+                    rowPutChange.addColumn(new Column(key, ColumnValue.fromDouble(Double.valueOf(value.toString()))));
+                }  else if (value.getClass().getSimpleName().equals("Date"))  {
+                    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                    String format = sdf.format(value);
+                    rowPutChange.addColumn(new Column(key, ColumnValue.fromString(format)));
+                }
+            }
+        }
+        // 写入
+        PutRowResponse putRowResponse = client.putRow(new PutRowRequest(rowPutChange));
+        int num = putRowResponse.getConsumedCapacity().getCapacityUnit().getWriteCapacityUnit();
+        return num;
+    }
+
+    /**
+     * 更新不为空的字段
+     * @param obj
+     */
+    public static int update(Object obj) {
+        // 获取表的配置信息
+        BasicInfo aliasBasicInfo = buildBasicInfo(getAlias(obj));
+
+        // 创建 SyncClient
+        SyncClient client = getSyncClient(aliasBasicInfo);
+
+        JSONObject jsonObject = (JSONObject) JSON.toJSON(obj);
+
+        // 构造主键
+        PrimaryKeyBuilder primaryKeyBuilder = PrimaryKeyBuilder.createPrimaryKeyBuilder();
+        List<String> primaryKeyList = aliasBasicInfo.getPrimaryKey();
+        for (String key : primaryKeyList) {
+            Object value = jsonObject.get(underlineToHump(key));
+            if (value.getClass().getSimpleName().equals("Long")) {
+                primaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromLong((Long) value));
+            } else {
+                primaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromString((String) value));
+            }
+        }
+        PrimaryKey primaryKey = primaryKeyBuilder.build();
+
+        RowUpdateChange rowUpdateChange = new RowUpdateChange(aliasBasicInfo.getTableName(), primaryKey);
+        // 设置其他属性
+        for (Map.Entry<String, Object> map : jsonObject.entrySet()) {
+            String key = map.getKey();
+            Object value = map.getValue();
+            key = humpToUnderline(key);     // 驼峰转下划线
+            if (!primaryKeyList.contains(key) && value != null) {       // 非主键 非空 判断
+                if (value.getClass().getSimpleName().equals("Long")) {      // 待完善 其他类型当成字符串处理，目前是够用的
+                    rowUpdateChange.put(new Column(key, ColumnValue.fromLong((Long) value)));
+                } else if (value.getClass().getSimpleName().equals("String")) {
+                    rowUpdateChange.put(new Column(key, ColumnValue.fromString((String) value)));
+                } else if (value.getClass().getSimpleName().equals("Boolean")) {
+                    rowUpdateChange.put(new Column(key, ColumnValue.fromBoolean(Boolean.valueOf(value.toString()))));
+                } else if (value.getClass().getSimpleName().equals("Double")) {
+                    rowUpdateChange.put(new Column(key, ColumnValue.fromDouble(Double.valueOf(value.toString()))));
+                }  else if (value.getClass().getSimpleName().equals("Date"))  {
+                    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                    String format = sdf.format(value);
+                    rowUpdateChange.put(new Column(key, ColumnValue.fromString(format)));
+                }
+            }
+        }
+        // 更新
+        UpdateRowResponse updateRowResponse = client.updateRow(new UpdateRowRequest(rowUpdateChange));
+        int num = updateRowResponse.getConsumedCapacity().getCapacityUnit().getWriteCapacityUnit();
+        return num;
+    }
+
+    /**
+     * 构建 {@link BasicInfo}
+     * @param alias 实体的别名
+     * @return
+     */
+    public static BasicInfo buildBasicInfo(String alias) {
+        //基础信息
+        BasicInfo basicInfo = getBasicInfo(alias);
+        //设置默认参数
+        setDefault(basicInfo);
+        return basicInfo;
+    }
+
 }
