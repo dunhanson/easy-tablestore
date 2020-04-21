@@ -3,6 +3,7 @@ package site.dunhanson.aliyun.tablestore.utils;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.alicloud.openservices.tablestore.SyncClient;
+import com.alicloud.openservices.tablestore.TableStoreException;
 import com.alicloud.openservices.tablestore.model.*;
 import com.alicloud.openservices.tablestore.model.search.SearchQuery;
 import com.alicloud.openservices.tablestore.model.search.SearchRequest;
@@ -632,9 +633,34 @@ public class TableStoreUtils {
         // 获取表的配置信息
         BasicInfo aliasBasicInfo = buildBasicInfo(getAlias(obj));
 
+        RowUpdateChange rowUpdateChange = getRowUpdateChange(obj, aliasBasicInfo);
+
         // 创建 SyncClient
         SyncClient client = getSyncClient(aliasBasicInfo);
 
+        // 更新
+        int num = 0;
+        try {
+            UpdateRowResponse updateRowResponse = client.updateRow(new UpdateRowRequest(rowUpdateChange));
+            num = updateRowResponse.getConsumedCapacity().getCapacityUnit().getWriteCapacityUnit();
+        }catch (TableStoreException e){
+            if ("OTSConditionCheckFail".equals(e.getErrorCode())) {     // 期望不一致返回 num=0即可
+                return 0;
+            } else {
+                e.printStackTrace();
+                throw e;
+            }
+        }
+        return num;
+    }
+
+    /**
+     * 获取 {@link RowUpdateChange}  行的更新对象（只会更新不为空的字段）
+     * @param obj
+     * @param aliasBasicInfo    {@link BasicInfo}
+     * @return
+     */
+    private static RowUpdateChange getRowUpdateChange(Object obj, BasicInfo aliasBasicInfo) {
         JSONObject jsonObject = (JSONObject) JSON.toJSON(obj);
 
         // 构造主键
@@ -672,10 +698,9 @@ public class TableStoreUtils {
                 }
             }
         }
-        // 更新
-        UpdateRowResponse updateRowResponse = client.updateRow(new UpdateRowRequest(rowUpdateChange));
-        int num = updateRowResponse.getConsumedCapacity().getCapacityUnit().getWriteCapacityUnit();
-        return num;
+        Condition condition = new Condition(RowExistenceExpectation.EXPECT_EXIST);
+        rowUpdateChange.setCondition(condition);
+        return rowUpdateChange;
     }
 
     /**
@@ -690,5 +715,40 @@ public class TableStoreUtils {
         setDefault(basicInfo);
         return basicInfo;
     }
+
+
+    /**
+     * 批量更新（更新不为空的字段）
+     */
+    public static int batchUpdate(List list) {
+        int num = 0;
+        if (list != null && list.size() > 0) {
+            BasicInfo aliasBasicInfo = buildBasicInfo(getAlias(list.get(0)));
+            BatchWriteRowRequest batchWriteRowRequest = new BatchWriteRowRequest();
+
+            for (Object obj : list) {
+                RowUpdateChange rowUpdateChange = getRowUpdateChange(obj, aliasBasicInfo);
+                batchWriteRowRequest.addRowChange(rowUpdateChange);
+            }
+
+            // 创建 SyncClient
+            SyncClient client = getSyncClient(aliasBasicInfo);
+
+            try {
+                BatchWriteRowResponse response = client.batchWriteRow(batchWriteRowRequest);
+                num = response.getSucceedRows().size();
+            }catch (TableStoreException e){
+                if ("OTSConditionCheckFail".equals(e.getErrorCode())) {     // 期望不一致返回 num=0即可
+                    return 0;
+                } else {
+                    e.printStackTrace();
+                    throw e;
+                }
+            }
+
+        }
+        return num;
+    }
+
 
 }
