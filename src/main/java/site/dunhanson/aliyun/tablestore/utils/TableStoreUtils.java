@@ -704,6 +704,32 @@ public class TableStoreUtils {
     }
 
     /**
+     * 获取 {@link RowDeleteChange}  行的删除对象
+     * @param obj
+     * @param aliasBasicInfo    {@link BasicInfo}
+     * @return
+     */
+    private static RowDeleteChange getRowDeleteChange(Object obj, BasicInfo aliasBasicInfo) {
+        JSONObject jsonObject = (JSONObject) JSON.toJSON(obj);
+
+        // 构造主键
+        PrimaryKeyBuilder primaryKeyBuilder = PrimaryKeyBuilder.createPrimaryKeyBuilder();
+        List<String> primaryKeyList = aliasBasicInfo.getPrimaryKey();
+        for (String key : primaryKeyList) {
+            Object value = jsonObject.get(underlineToHump(key));
+            if (value.getClass().getSimpleName().equals("Long")) {
+                primaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromLong((Long) value));
+            } else {
+                primaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromString((String) value));
+            }
+        }
+        PrimaryKey primaryKey = primaryKeyBuilder.build();
+
+        RowDeleteChange rowDeleteChange = new RowDeleteChange(aliasBasicInfo.getTableName(), primaryKey);
+        return rowDeleteChange;
+    }
+
+    /**
      * 构建 {@link BasicInfo}
      * @param alias 实体的别名
      * @return
@@ -746,6 +772,66 @@ public class TableStoreUtils {
                 }
             }
 
+        }
+        return num;
+    }
+
+    /**
+     * 根据主键批量删除
+     */
+    public static int batchDelete(List list) {
+        int num = 0;
+        if (list != null && list.size() > 0) {
+            BasicInfo aliasBasicInfo = buildBasicInfo(getAlias(list.get(0)));
+            BatchWriteRowRequest batchWriteRowRequest = new BatchWriteRowRequest();
+
+            for (Object obj : list) {
+                RowDeleteChange rowDeleteChange = getRowDeleteChange(obj, aliasBasicInfo);
+                batchWriteRowRequest.addRowChange(rowDeleteChange);
+            }
+
+            // 创建 SyncClient
+            SyncClient client = getSyncClient(aliasBasicInfo);
+            try {
+                BatchWriteRowResponse response = client.batchWriteRow(batchWriteRowRequest);
+                num = response.getSucceedRows().size();
+            }catch (TableStoreException e){
+                if ("OTSConditionCheckFail".equals(e.getErrorCode())) {     // 期望不一致返回 num=0即可
+                    return 0;
+                } else {
+                    e.printStackTrace();
+                    throw e;
+                }
+            }
+        }
+        return num;
+    }
+
+    /**
+     * 根据主键删除
+     * @param obj
+     */
+    public static int delete(Object obj) {
+        // 获取表的配置信息
+        BasicInfo aliasBasicInfo = buildBasicInfo(getAlias(obj));
+
+        RowDeleteChange rowDeleteChange = getRowDeleteChange(obj, aliasBasicInfo);
+
+        // 创建 SyncClient
+        SyncClient client = getSyncClient(aliasBasicInfo);
+
+        // 更新
+        int num = 0;
+        try {
+            DeleteRowResponse deleteRowResponse = client.deleteRow(new DeleteRowRequest(rowDeleteChange));
+            num = deleteRowResponse.getConsumedCapacity().getCapacityUnit().getWriteCapacityUnit();
+        }catch (TableStoreException e){
+            if ("OTSConditionCheckFail".equals(e.getErrorCode())) {     // 期望不一致返回 num=0即可
+                return 0;
+            } else {
+                e.printStackTrace();
+                throw e;
+            }
         }
         return num;
     }
