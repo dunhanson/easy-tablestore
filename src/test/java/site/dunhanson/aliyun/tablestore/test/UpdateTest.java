@@ -3,9 +3,7 @@ package site.dunhanson.aliyun.tablestore.test;
 import com.alicloud.openservices.tablestore.model.search.SearchQuery;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.Test;
-import site.dunhanson.aliyun.tablestore.entity.Document;
-import site.dunhanson.aliyun.tablestore.entity.DocumentExtract;
-import site.dunhanson.aliyun.tablestore.entity.Page;
+import site.dunhanson.aliyun.tablestore.entity.*;
 import site.dunhanson.aliyun.tablestore.utils.TableStoreUtils;
 
 import java.util.Date;
@@ -17,21 +15,36 @@ public class UpdateTest {
 
 
     /**
+     * 测试获取一行记录
+     */
+    @Test
+    public void testGet() {
+        DocumentTemp temp = new DocumentTemp();
+        temp.setPageTime("2018-10-10");
+        temp.setDocid(9464174112L);
+        DocumentTemp documentTemp = TableStoreUtils.get(temp, DocumentTemp.class);
+        System.out.println(documentTemp);
+    }
+
+
+    /**
      * 测试新增
      */
     @Test
     public void testAdd() {
-        Document doc = new Document();
-        // 设置主键
-        doc.setPageTime("2020-01-01");
-        doc.setDocid(1L);
-
-        // 设置其他属性
-        doc.setArea("华南");
-        doc.setPublishtime(new Date());
+        Enterprise enterprise = new Enterprise();
+        enterprise.setBidiId(1314L);
+        enterprise.setProvince("广东d2");
 
 
-        int num = TableStoreUtils.insert(doc);
+        // 更新招投标数量
+        enterprise.setBidNumber(40);
+        enterprise.setZhaoBiaoNumber(10);
+        enterprise.setDaiLiNumber(10);
+        enterprise.setZhongBiaoNumber(10);
+        enterprise.setTouBiaoNumber(10);
+
+        int num = TableStoreUtils.insert(enterprise);
         log.debug("影响行数={}", num);
     }
 
@@ -40,15 +53,19 @@ public class UpdateTest {
      */
     @Test
     public void testUpdate() {
-        Document doc = new Document();
-        // 设置主键
-        doc.setPageTime("2020-01-01");
-        doc.setDocid(13L);
+        Enterprise enterprise = new Enterprise();
+        enterprise.setBidiId(175984918635089920L);
+        enterprise.setProvince("广东d2");
 
-        // 设置其他属性（相当于改）
-        doc.setArea("华南");
 
-        int num = TableStoreUtils.update(doc);
+        // 更新招投标数量
+        enterprise.setBidNumber(40);
+        enterprise.setZhaoBiaoNumber(10);
+        enterprise.setDaiLiNumber(10);
+        enterprise.setZhongBiaoNumber(10);
+        enterprise.setTouBiaoNumber(10);
+
+        int num = TableStoreUtils.update(enterprise);
         log.debug("影响行数={}", num);
     }
 

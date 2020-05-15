@@ -604,15 +604,17 @@ public class TableStoreUtils {
             Object value = map.getValue();
             key = humpToUnderline(key);     // 驼峰转下划线
             if (!primaryKeyList.contains(key) && value != null) {       // 非主键 非空 判断
-                if (value.getClass().getSimpleName().equals("Long")) {      // 待完善 其他类型当成字符串处理，目前是够用的
-                    rowPutChange.addColumn(new Column(key, ColumnValue.fromLong((Long) value)));
-                } else if (value.getClass().getSimpleName().equals("String")) {
+                if (value.getClass().getSimpleName().equals("String")) {      // 待完善 其他类型当成字符串处理，目前是够用的
                     rowPutChange.addColumn(new Column(key, ColumnValue.fromString((String) value)));
-                } else if (value.getClass().getSimpleName().equals("Boolean")) {
-                    rowPutChange.addColumn(new Column(key, ColumnValue.fromBoolean(Boolean.valueOf(value.toString()))));
+                } else if (value.getClass().getSimpleName().equals("Integer")) {
+                    rowPutChange.addColumn(new Column(key, ColumnValue.fromLong((Integer) value)));
+                } else if (value.getClass().getSimpleName().equals("Long")) {
+                    rowPutChange.addColumn(new Column(key, ColumnValue.fromLong((Long) value)));
                 } else if (value.getClass().getSimpleName().equals("Double")) {
                     rowPutChange.addColumn(new Column(key, ColumnValue.fromDouble(Double.valueOf(value.toString()))));
-                }  else if (value.getClass().getSimpleName().equals("Date"))  {
+                }  else if (value.getClass().getSimpleName().equals("Boolean")) {
+                    rowPutChange.addColumn(new Column(key, ColumnValue.fromBoolean(Boolean.valueOf(value.toString()))));
+                } else if (value.getClass().getSimpleName().equals("Date"))  {
                     SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                     String format = sdf.format(value);
                     rowPutChange.addColumn(new Column(key, ColumnValue.fromString(format)));
@@ -683,15 +685,17 @@ public class TableStoreUtils {
             Object value = map.getValue();
             key = humpToUnderline(key);     // 驼峰转下划线
             if (!primaryKeyList.contains(key) && value != null) {       // 非主键 非空 判断
-                if (value.getClass().getSimpleName().equals("Long")) {      // 待完善 其他类型当成字符串处理，目前是够用的
-                    rowUpdateChange.put(new Column(key, ColumnValue.fromLong((Long) value)));
-                } else if (value.getClass().getSimpleName().equals("String")) {
+                if (value.getClass().getSimpleName().equals("String")) {      // 待完善 其他类型当成字符串处理，目前是够用的
                     rowUpdateChange.put(new Column(key, ColumnValue.fromString((String) value)));
-                } else if (value.getClass().getSimpleName().equals("Boolean")) {
-                    rowUpdateChange.put(new Column(key, ColumnValue.fromBoolean(Boolean.valueOf(value.toString()))));
+                } else if (value.getClass().getSimpleName().equals("Integer")) {
+                    rowUpdateChange.put(new Column(key, ColumnValue.fromLong((Integer) value)));
+                } else if (value.getClass().getSimpleName().equals("Long")) {      // 待完善 其他类型当成字符串处理，目前是够用的
+                    rowUpdateChange.put(new Column(key, ColumnValue.fromLong((Long) value)));
                 } else if (value.getClass().getSimpleName().equals("Double")) {
                     rowUpdateChange.put(new Column(key, ColumnValue.fromDouble(Double.valueOf(value.toString()))));
-                }  else if (value.getClass().getSimpleName().equals("Date"))  {
+                } else if (value.getClass().getSimpleName().equals("Boolean")) {
+                    rowUpdateChange.put(new Column(key, ColumnValue.fromBoolean(Boolean.valueOf(value.toString()))));
+                } else if (value.getClass().getSimpleName().equals("Date"))  {
                     SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                     String format = sdf.format(value);
                     rowUpdateChange.put(new Column(key, ColumnValue.fromString(format)));
@@ -836,5 +840,45 @@ public class TableStoreUtils {
         return num;
     }
 
+
+    /**
+     * 根据主键获取一行记录
+     * @param entity
+     * @param clazz
+     * @param <T>
+     * @return
+     */
+    public static <T> T get(T entity, Class<T> clazz) {
+        // 获取表的配置信息
+        BasicInfo aliasBasicInfo = buildBasicInfo(getAlias(clazz));
+
+        JSONObject jsonObject = (JSONObject) JSON.toJSON(entity);
+
+        // 构造主键
+        PrimaryKeyBuilder primaryKeyBuilder = PrimaryKeyBuilder.createPrimaryKeyBuilder();
+        List<String> primaryKeyList = aliasBasicInfo.getPrimaryKey();
+        for (String key : primaryKeyList) {
+            Object value = jsonObject.get(underlineToHump(key));
+            if (value.getClass().getSimpleName().equals("Long")) {
+                primaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromLong((Long) value));
+            } else {
+                primaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromString((String) value));
+            }
+        }
+        PrimaryKey primaryKey = primaryKeyBuilder.build();
+
+        // 读一行
+        SingleRowQueryCriteria criteria = new SingleRowQueryCriteria(aliasBasicInfo.getTableName(), primaryKey);
+        // 设置读取最新版本
+        criteria.setMaxVersions(1);
+        GetRowResponse getRowResponse = getSyncClient(aliasBasicInfo).getRow(new GetRowRequest(criteria));
+        Row row = getRowResponse.getRow();
+
+        T t = null;
+        if (row != null) {
+            t = rowToEntity(row, clazz);
+        }
+        return t;
+    }
 
 }
