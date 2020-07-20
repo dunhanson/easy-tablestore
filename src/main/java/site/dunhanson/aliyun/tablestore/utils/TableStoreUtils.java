@@ -37,6 +37,7 @@ public class TableStoreUtils {
     private static final String INSTANCE_NAME = "instanceName";
     private static final String TABLE_NAME = "tableName";
     private static final String PRIMARY_KEY = "primaryKey";
+    private static final String SECONDARY_INDEX = "secondaryIndex";
     private static final String INDEX_NAME = "indexName";
     private static final String IGNORE_COLUMN = "ignoreColumn";
     private static final String LIMIT = "limit";
@@ -54,7 +55,7 @@ public class TableStoreUtils {
     public static BasicInfo getBasicInfo(String alias) {
         BasicInfo basicInfo = new BasicInfo();
         String[] arr = new String[]{
-                END_POINT, ACCESS_KEY_ID, ACCESS_KEY_SECRET, INSTANCE_NAME, TABLE_NAME, PRIMARY_KEY, INDEX_NAME,
+                END_POINT, ACCESS_KEY_ID, ACCESS_KEY_SECRET, INSTANCE_NAME, TABLE_NAME, PRIMARY_KEY, SECONDARY_INDEX, INDEX_NAME,
                 IGNORE_COLUMN, LIMIT
         };
         for(int i = 0; i < arr.length; i++) {
@@ -72,6 +73,8 @@ public class TableStoreUtils {
                 basicInfo.setTableName((String)value);
             } else if(key.equals(PRIMARY_KEY)) {
                 basicInfo.setPrimaryKey((List<String>) value);
+            } else if(key.equals(SECONDARY_INDEX)) {
+                basicInfo.setSecondaryIndex((List<String>) value);
             } else if(key.equals(INDEX_NAME)) {
                 basicInfo.setIndexName((List<String>) value);
             } else if(key.equals(IGNORE_COLUMN)) {
@@ -880,5 +883,87 @@ public class TableStoreUtils {
         }
         return t;
     }
+
+    /**
+     * 根据二级索引查找（ps：只支持一个，即第一个不为空的二级索引）
+     * @param entity
+     * @param clazz
+     * @param <T>
+     * @return
+     */
+    public static <T> List<T> searchBysecondaryIndex(T entity,  Class<T> clazz) {
+        List<T> result = new LinkedList<>();
+        // 1、获取表的配置信息
+        BasicInfo aliasBasicInfo = buildBasicInfo(getAlias(clazz));
+        JSONObject jsonObject = (JSONObject) JSON.toJSON(entity);
+
+
+        // 2、设置起始主键/结束主键
+        PrimaryKeyBuilder startPrimaryKeyBuilder = PrimaryKeyBuilder.createPrimaryKeyBuilder();
+        PrimaryKeyBuilder endPrimaryKeyBuilder = PrimaryKeyBuilder.createPrimaryKeyBuilder();
+
+        // 2.1、设置索引表PK（即：二级索引，只支持一个）（查询时 二级索引表的PK要放在主表之前，要不然会报错）
+        RangeRowQueryCriteria rangeRowQueryCriteria = null;
+        List<String> secondaryIndexList = aliasBasicInfo.getSecondaryIndex();
+        for (String secondaryIndex : secondaryIndexList) {
+            String key = secondaryIndex.replace(aliasBasicInfo.getTableName() + "_index2_", "");
+            Object value = jsonObject.get(underlineToHump(key));
+            if (value != null) {
+                if (value.getClass().getSimpleName().equals("Long")) {
+                    startPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromLong((Long) value)); // 索引表PK最小值。
+                    endPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromLong((Long) value)); // 索引表PK最大值。
+                } else {
+                    startPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromString((String) value)); // 索引表PK最小值。
+                    endPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromString((String) value)); // 索引表PK最大值。
+                }
+                rangeRowQueryCriteria = new RangeRowQueryCriteria(secondaryIndex);
+                break;
+            }
+        }
+
+        // 2、设置主表PK
+        List<String> primaryKeyList = aliasBasicInfo.getPrimaryKey();
+        for (String key : primaryKeyList) {
+            Field  field = null;
+            try{
+                field = clazz.getDeclaredField(underlineToHump(key));
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+            if (field.getType().getSimpleName().equals("Long")) {
+                startPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.INF_MIN); // 主表PK最小值。
+                endPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.INF_MAX); // 主表PK最大值。
+            } else {
+                startPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromString("")); // 主表PK最小值。
+                endPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromString("")); // 主表PK最大值。
+            }
+        }
+
+        // 查询
+        if (rangeRowQueryCriteria != null) {
+            rangeRowQueryCriteria.setInclusiveStartPrimaryKey(startPrimaryKeyBuilder.build());
+            rangeRowQueryCriteria.setExclusiveEndPrimaryKey(endPrimaryKeyBuilder.build());
+            // 设置读取最新版本
+            rangeRowQueryCriteria.setMaxVersions(1);
+            SyncClient syncClient = getSyncClient(aliasBasicInfo);
+            while (true) {
+                GetRangeResponse getRangeResponse = syncClient.getRange(new GetRangeRequest(rangeRowQueryCriteria));
+                for (Row row : getRangeResponse.getRows()) {
+                    result.add(rowToEntity(row, clazz));
+                }
+
+                // 若nextStartPrimaryKey不为null，则继续读取。
+                if (getRangeResponse.getNextStartPrimaryKey() != null) {
+                    rangeRowQueryCriteria.setInclusiveStartPrimaryKey(getRangeResponse.getNextStartPrimaryKey());
+                } else {
+                    break;
+                }
+            }
+        }
+
+        return result;
+    }
+
+
 
 }

@@ -26,6 +26,8 @@ public class BasicInfo {
     private String tableName;
     /**主键List集合**/
     private List<String> primaryKey;
+    /**二级索引List集合**/
+    private List<String> secondaryIndex;
     /**索引名List集合**/
     private List<String> indexName;
     /**忽略字段List集合**/

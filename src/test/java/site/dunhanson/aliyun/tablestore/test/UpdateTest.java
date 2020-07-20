@@ -26,6 +26,17 @@ public class UpdateTest {
         System.out.println(documentTemp);
     }
 
+    /**
+     * 根据二级索引查找
+     */
+    @Test
+    public void testGetRange() {
+        Enterprise enterprise = new Enterprise();
+        enterprise.setName("比地6");
+        List<Enterprise> list = TableStoreUtils.searchBysecondaryIndex(enterprise, Enterprise.class);
+        System.out.println(list);
+    }
+
 
     /**
      * 测试新增
