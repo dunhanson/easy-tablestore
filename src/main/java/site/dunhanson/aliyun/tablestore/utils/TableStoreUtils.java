@@ -934,22 +934,11 @@ public class TableStoreUtils {
             }
         }
 
-        // 2、设置主表PK
+        // 2、设置主表PK（任意范围）
         List<String> primaryKeyList = aliasBasicInfo.getPrimaryKey();
         for (String key : primaryKeyList) {
-            Field  field = null;
-            try{
-                field = clazz.getDeclaredField(underlineToHump(key));
-            }catch (Exception e){
-                e.printStackTrace();
-            }
-            if (field.getType().getSimpleName().equals("Long")) {
-                startPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.INF_MIN); // 主表PK最小值。
-                endPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.INF_MAX); // 主表PK最大值。
-            } else {
-                startPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromString("1970-01-01")); // 主表PK最小值。
-                endPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromString("2999-12-01")); // 主表PK最大值。
-            }
+            startPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.INF_MIN); // 主表PK最小值。
+            endPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.INF_MAX); // 主表PK最大值。
         }
 
         // 查询
