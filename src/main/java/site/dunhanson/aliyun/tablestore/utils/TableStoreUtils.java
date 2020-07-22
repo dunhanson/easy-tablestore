@@ -52,7 +52,7 @@ public class TableStoreUtils {
      * @param alias
      * @return
      */
-    public static BasicInfo getBasicInfo(String alias) {
+    private static BasicInfo getBasicInfo(String alias) {
         BasicInfo basicInfo = new BasicInfo();
         String[] arr = new String[]{
                 END_POINT, ACCESS_KEY_ID, ACCESS_KEY_SECRET, INSTANCE_NAME, TABLE_NAME, PRIMARY_KEY, SECONDARY_INDEX, INDEX_NAME,
@@ -91,7 +91,7 @@ public class TableStoreUtils {
      * @param basicInfo
      * @return
      */
-    public static SyncClient getSyncClient(BasicInfo basicInfo) {
+    private static SyncClient getSyncClient(BasicInfo basicInfo) {
         SyncClient client = syncClientMap.get(basicInfo);;
         if(client == null) {
             String endPoint = basicInfo.getEndPoint();
@@ -238,7 +238,7 @@ public class TableStoreUtils {
      * @param <T>
      * @return
      */
-    public static <T> T rowToEntity(Row row, Class<T> clazz) {
+    private static <T> T rowToEntity(Row row, Class<T> clazz) {
         T entity = null;
         Map<String, Object> map = new HashMap<>();
         //遍历主键
@@ -278,7 +278,7 @@ public class TableStoreUtils {
      * @param text
      * @return
      */
-    public static String underlineToHump(String text) {
+    private static String underlineToHump(String text) {
         StringBuffer stringBuffer = new StringBuffer();
         String[] arr = text.split(UNDERLINE);
         for(int i = 0; i < arr.length; i++) {
@@ -296,7 +296,7 @@ public class TableStoreUtils {
      * @param text
      * @return
      */
-    public static String humpToUnderline(String text){
+    private static String humpToUnderline(String text){
         StringBuilder stringBuilder = new StringBuilder();
         for(int i = 0; i < text.length(); i++) {
             char tempChar = text.charAt(i);
@@ -314,7 +314,7 @@ public class TableStoreUtils {
      * @param clazz
      * @return
      */
-    public static String getAlias(Class clazz) {
+    private static String getAlias(Class clazz) {
         String alias = clazz.getSimpleName();
         alias = alias.substring(0,1).toLowerCase() + alias.substring(1);
         return alias;
@@ -325,7 +325,7 @@ public class TableStoreUtils {
      * @param obj
      * @return
      */
-    public static String getAlias(Object obj) {
+    private static String getAlias(Object obj) {
         String alias = obj.getClass().getSimpleName();
         alias = alias.substring(0,1).toLowerCase() + alias.substring(1);
         return alias;
@@ -337,7 +337,7 @@ public class TableStoreUtils {
      * @param ignoreColumns
      * @return
      */
-    public static List<String> getNoIgnoreColumns(Class clazz, List<String> ignoreColumns) {
+    private static List<String> getNoIgnoreColumns(Class clazz, List<String> ignoreColumns) {
         List<String> allColumns = getAllFieldName(clazz, true);
         allColumns.removeAll(ignoreColumns);
         return allColumns;
@@ -349,7 +349,7 @@ public class TableStoreUtils {
      * @param ignoreColumns
      * @return
      */
-    public static List<String> getNoIgnoreColumns(Class clazz, String...ignoreColumns) {
+    private static List<String> getNoIgnoreColumns(Class clazz, String...ignoreColumns) {
         return getNoIgnoreColumns(clazz, Arrays.asList(ignoreColumns));
     }
 
@@ -358,7 +358,7 @@ public class TableStoreUtils {
      * @param clazz
      * @return
      */
-    public static List<String> getNoIgnoreColumns(Class clazz) {
+    private static List<String> getNoIgnoreColumns(Class clazz) {
         List<String> ignoreColumns = getBasicInfo(getAlias(clazz)).getIgnoreColumn();
         return getNoIgnoreColumns(clazz, ignoreColumns);
     }
@@ -369,7 +369,7 @@ public class TableStoreUtils {
      * @param humpToUnderline   是否需要 驼峰转下划线
      * @return
      */
-    public static List<String> getAllFieldName(Class clazz, boolean humpToUnderline) {
+    private static List<String> getAllFieldName(Class clazz, boolean humpToUnderline) {
         List<String> list = new ArrayList<>();
         Field[] fields = clazz.getDeclaredFields();
         for(Field field : fields) {
@@ -383,7 +383,7 @@ public class TableStoreUtils {
      * 设置默认参数
      * @param aliasBasicInfo
      */
-    public static void setDefault(BasicInfo aliasBasicInfo) {
+    private static void setDefault(BasicInfo aliasBasicInfo) {
         BasicInfo defaultBasicInfo = getBasicInfo(DEFAULT);
         // endPoint
         if(StringUtils.isBlank(aliasBasicInfo.getEndPoint())) {
@@ -741,7 +741,7 @@ public class TableStoreUtils {
      * @param alias 实体的别名
      * @return
      */
-    public static BasicInfo buildBasicInfo(String alias) {
+    private static BasicInfo buildBasicInfo(String alias) {
         //基础信息
         BasicInfo basicInfo = getBasicInfo(alias);
         //设置默认参数
@@ -891,7 +891,20 @@ public class TableStoreUtils {
      * @param <T>
      * @return
      */
-    public static <T> List<T> searchBysecondaryIndex(T entity,  Class<T> clazz) {
+    public static <T> List<T> searchBysecondaryIndex(T entity,  Class<T> clazz){
+        return searchBysecondaryIndex(entity, clazz, 0);
+    }
+
+
+    /**
+     * 根据二级索引查找（ps：只支持一个，即第一个不为空的二级索引）
+     * @param entity
+     * @param clazz
+     * @param limit     获取的条数（如果小1则全查）
+     * @param <T>
+     * @return
+     */
+    public static <T> List<T> searchBysecondaryIndex(T entity,  Class<T> clazz, int limit) {
         List<T> result = new LinkedList<>();
         // 1、获取表的配置信息
         BasicInfo aliasBasicInfo = buildBasicInfo(getAlias(clazz));
@@ -934,8 +947,8 @@ public class TableStoreUtils {
                 startPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.INF_MIN); // 主表PK最小值。
                 endPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.INF_MAX); // 主表PK最大值。
             } else {
-                startPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromString("")); // 主表PK最小值。
-                endPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromString("")); // 主表PK最大值。
+                startPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromString("1970-01-01")); // 主表PK最小值。
+                endPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromString("2999-12-01")); // 主表PK最大值。
             }
         }
 
@@ -946,19 +959,37 @@ public class TableStoreUtils {
             // 设置读取最新版本
             rangeRowQueryCriteria.setMaxVersions(1);
             SyncClient syncClient = getSyncClient(aliasBasicInfo);
-            while (true) {
-                GetRangeResponse getRangeResponse = syncClient.getRange(new GetRangeRequest(rangeRowQueryCriteria));
-                for (Row row : getRangeResponse.getRows()) {
-                    result.add(rowToEntity(row, clazz));
-                }
 
-                // 若nextStartPrimaryKey不为null，则继续读取。
-                if (getRangeResponse.getNextStartPrimaryKey() != null) {
-                    rangeRowQueryCriteria.setInclusiveStartPrimaryKey(getRangeResponse.getNextStartPrimaryKey());
-                } else {
-                    break;
-                }
+            // 分页查询（默认5000，如果查过5000的需要遍历查询）
+            if (limit > 0) {
+                rangeRowQueryCriteria.setLimit(limit);
             }
+            GetRangeResponse getRangeResponse = syncClient.getRange(new GetRangeRequest(rangeRowQueryCriteria));
+            for (Row row : getRangeResponse.getRows()) {
+                result.add(rowToEntity(row, clazz));
+            }
+            //
+//            while (true) {
+//                GetRangeResponse getRangeResponse = syncClient.getRange(new GetRangeRequest(rangeRowQueryCriteria));
+//                if (limit > 0) {
+//                    for (Row row : getRangeResponse.getRows()) {
+//                        if (result.size() < limit) {
+//                            result.add(rowToEntity(row, clazz));
+//                        }
+//                    }
+//                } else {
+//                    for (Row row : getRangeResponse.getRows()) {
+//                        result.add(rowToEntity(row, clazz));
+//                    }
+//                }
+//
+//                // 若nextStartPrimaryKey不为null，则继续读取。
+//                if (getRangeResponse.getNextStartPrimaryKey() != null) {
+//                    rangeRowQueryCriteria.setInclusiveStartPrimaryKey(getRangeResponse.getNextStartPrimaryKey());
+//                } else {
+//                    break;
+//                }
+//            }
         }
 
         return result;

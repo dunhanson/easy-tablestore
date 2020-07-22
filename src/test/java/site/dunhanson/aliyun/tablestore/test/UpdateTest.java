@@ -31,9 +31,11 @@ public class UpdateTest {
      */
     @Test
     public void testGetRange() {
-        Enterprise enterprise = new Enterprise();
-        enterprise.setName("比地6");
-        List<Enterprise> list = TableStoreUtils.searchBysecondaryIndex(enterprise, Enterprise.class);
+        DocumentExtract extract = new DocumentExtract();
+        extract.setStatus(1L);
+
+
+        List<DocumentExtract> list = TableStoreUtils.searchBysecondaryIndex(extract, DocumentExtract.class, 2);
         System.out.println(list);
     }
 
