@@ -28,7 +28,7 @@ public class DocumentExtract {
     /**
      * 其他要素提取返回的json字符串（公告内容样式清理、关键字、资质、地区信息）
      */
-    private String otherExtractJson;
+    private String otherJson;
 
 
     /**

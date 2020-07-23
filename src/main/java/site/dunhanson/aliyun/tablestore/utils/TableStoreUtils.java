@@ -751,7 +751,7 @@ public class TableStoreUtils {
 
 
     /**
-     * 批量更新（更新不为空的字段）
+     * 批量更新（更新不为空的字段，不能超过200以后测试）
      */
     public static int batchUpdate(List list) {
         int num = 0;
