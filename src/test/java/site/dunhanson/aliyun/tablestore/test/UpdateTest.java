@@ -32,11 +32,19 @@ public class UpdateTest {
     @Test
     public void testGetRange() {
         DocumentExtract extract = new DocumentExtract();
-        extract.setStatus(1L);
+        extract.setStatus(-1L);
 
 
-        List<DocumentExtract> list = TableStoreUtils.searchBysecondaryIndex(extract, DocumentExtract.class, 2);
-        System.out.println(list);
+        List<DocumentExtract> list = TableStoreUtils.searchBysecondaryIndex(extract, DocumentExtract.class, 10);
+        for (DocumentExtract extract1 : list) {
+            extract1.setStatus(-1L);
+        }
+
+//        int num = TableStoreUtils.batchUpdate(list);
+//        System.out.println(num);
+
+        System.out.println(123);
+
     }
 
 

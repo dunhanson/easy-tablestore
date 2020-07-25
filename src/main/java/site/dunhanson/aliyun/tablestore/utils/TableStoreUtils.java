@@ -843,6 +843,66 @@ public class TableStoreUtils {
         return num;
     }
 
+    /**
+     * 通过主键批量获取
+     * @param list
+     */
+    private static void batchGetRow(List list) {
+        BasicInfo aliasBasicInfo = buildBasicInfo(getAlias(list.get(0)));
+
+        MultiRowQueryCriteria multiRowQueryCriteria = new MultiRowQueryCriteria(aliasBasicInfo.getTableName());
+        for (Object obj : list) {
+            JSONObject jsonObject = (JSONObject) JSON.toJSON(obj);
+
+            // 构造主键
+            PrimaryKeyBuilder primaryKeyBuilder = PrimaryKeyBuilder.createPrimaryKeyBuilder();
+            List<String> primaryKeyList = aliasBasicInfo.getPrimaryKey();
+            for (String key : primaryKeyList) {
+                Object value = jsonObject.get(underlineToHump(key));
+                if (value.getClass().getSimpleName().equals("Long")) {
+                    primaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromLong((Long) value));
+                } else {
+                    primaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromString((String) value));
+                }
+            }
+            PrimaryKey primaryKey = primaryKeyBuilder.build();
+            multiRowQueryCriteria.addRow(primaryKey);
+        }
+
+        // 创建 SyncClient
+        SyncClient client = getSyncClient(aliasBasicInfo);
+
+        // 添加其他查询条件
+//        multiRowQueryCriteria.addColumnsToGet("Col0");
+//        multiRowQueryCriteria.addColumnsToGet("Col1");
+//
+//        SingleColumnValueFilter singleColumnValueFilter = new SingleColumnValueFilter("Col0",
+//                SingleColumnValueFilter.CompareOperator.EQUAL, ColumnValue.fromLong(0));
+//        singleColumnValueFilter.setPassIfMissing(false);
+//        multiRowQueryCriteria.setFilter(singleColumnValueFilter);
+
+        BatchGetRowRequest batchGetRowRequest = new BatchGetRowRequest();
+        // batchGetRow支持读取多个表的数据， 一个multiRowQueryCriteria对应一个表的查询条件，可以添加多个multiRowQueryCriteria.
+        multiRowQueryCriteria.setMaxVersions(1);
+        batchGetRowRequest.addMultiRowQueryCriteria(multiRowQueryCriteria);
+
+        BatchGetRowResponse batchGetRowResponse = client.batchGetRow(batchGetRowRequest);
+
+        System.out.println("是否全部成功：" + batchGetRowResponse.isAllSucceed());
+        if (!batchGetRowResponse.isAllSucceed()) {
+            for (BatchGetRowResponse.RowResult rowResult : batchGetRowResponse.getFailedRows()) {
+                System.out.println("失败的行：" + batchGetRowRequest.getPrimaryKey(rowResult.getTableName(), rowResult.getIndex()));
+                System.out.println("失败原因：" + rowResult.getError());
+            }
+
+            /**
+             * 可以通过createRequestForRetry方法再构造一个请求对失败的行进行重试。这里只给出构造重试请求的部分。
+             * 推荐的重试方法是使用SDK的自定义重试策略功能，支持对batch操作的部分行错误进行重试。设定重试策略后， 调用接口处即不需要增加重试代码.
+             */
+            BatchGetRowRequest retryRequest = batchGetRowRequest.createRequestForRetry(batchGetRowResponse.getFailedRows());
+        }
+    }
+
 
     /**
      * 根据主键获取一行记录
