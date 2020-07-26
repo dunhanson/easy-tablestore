@@ -1,5 +1,6 @@
 package site.dunhanson.aliyun.tablestore.utils;
 
+import lombok.extern.slf4j.Slf4j;
 import org.yaml.snakeyaml.Yaml;
 import java.io.InputStream;
 import java.util.HashMap;
@@ -11,6 +12,7 @@ import java.util.Map;
  * @date 2020.03.20
  * @description YAML工具类
  */
+@Slf4j
 public class YamlUtils {
     private static Map<String, Map<String, Object>> basicMap = new HashMap<>();
 
@@ -26,6 +28,10 @@ public class YamlUtils {
             try(InputStream inputStream = TableStoreUtils.class.getClassLoader().getResourceAsStream(path)) {
                 basicMap.put(path, yaml.load(inputStream));
                 map = basicMap.get(path);
+                Object tableStore = map.get("tableStore");
+                if (tableStore != null) {
+                    log.warn("tableStore环境={}", ((Map<String, Object>) tableStore).get("default"));
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }

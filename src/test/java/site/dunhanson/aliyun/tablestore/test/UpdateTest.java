@@ -32,19 +32,16 @@ public class UpdateTest {
     @Test
     public void testGetRange() {
         DocumentExtract extract = new DocumentExtract();
-        extract.setStatus(-1L);
 
-
+        extract.setStatus(1L);
+        log.warn("开始查询，status={}", extract.getStatus());
         List<DocumentExtract> list = TableStoreUtils.searchBysecondaryIndex(extract, DocumentExtract.class, 10);
-        for (DocumentExtract extract1 : list) {
-            extract1.setStatus(-1L);
-        }
+        log.warn("查询结果={}", list.size());
 
-//        int num = TableStoreUtils.batchUpdate(list);
-//        System.out.println(num);
-
-        System.out.println(123);
-
+        extract.setStatus(-1L);
+        log.warn("开始查询，status={}", extract.getStatus());
+        list = TableStoreUtils.searchBysecondaryIndex(extract, DocumentExtract.class, 10);
+        log.warn("查询结果={}", list.size());
     }
 
 
@@ -119,7 +116,7 @@ public class UpdateTest {
         doc.setStatus(1L);
 
         // 设置其他属性
-        doc.setArea("华南");
+        doc.setDochtmlcon("dochtmlcon");
         int num = TableStoreUtils.insert(doc);
 
         DocumentExtract doc2 = new DocumentExtract();
@@ -129,7 +126,7 @@ public class UpdateTest {
         doc2.setStatus(1L);
 
         // 设置其他属性
-        doc2.setArea("华南");
+        doc.setDochtmlcon("dochtmlcon");
         num += TableStoreUtils.insert(doc2);
 
         DocumentExtract doc3 = new DocumentExtract();
@@ -139,7 +136,7 @@ public class UpdateTest {
         doc3.setStatus(1L);
 
         // 设置其他属性
-        doc3.setArea("华南");
+        doc.setDochtmlcon("dochtmlcon");
         num += TableStoreUtils.insert(doc3);
 
         DocumentExtract doc4 = new DocumentExtract();
@@ -149,7 +146,7 @@ public class UpdateTest {
         doc4.setStatus(1L);
 
         // 设置其他属性
-        doc4.setArea("华南");
+        doc.setDochtmlcon("dochtmlcon");
         num += TableStoreUtils.insert(doc4);
 
 
