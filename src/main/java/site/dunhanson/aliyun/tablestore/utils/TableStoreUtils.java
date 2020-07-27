@@ -867,7 +867,7 @@ public class TableStoreUtils {
      * 通过主键批量获取（list最多100，否则报错）
      * @param list
      * @param clazz
-     * @param columnsToGet      添加要读取的列集合
+     * @param columnsToGet      添加要读取的列集合（默认查全部）
      * @param <T>
      * @return
      */
@@ -1048,9 +1048,7 @@ public class TableStoreUtils {
             }
 
             // 如果需要其他字段需要反查主表
-            if (columnsToGet != null && columnsToGet.size() > 0) {
-                result = batchGetRow(result, clazz, columnsToGet);
-            }
+            result = batchGetRow(result, clazz, columnsToGet);
 
             //
 //            while (true) {
