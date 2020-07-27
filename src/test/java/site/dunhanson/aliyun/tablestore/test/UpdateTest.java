@@ -35,12 +35,11 @@ public class UpdateTest {
 
         extract.setStatus(1L);
         log.warn("开始查询，status={}", extract.getStatus());
-        List<DocumentExtract> list = TableStoreUtils.searchBysecondaryIndex(extract, DocumentExtract.class, 10);
-        log.warn("查询结果={}", list.size());
 
-        extract.setStatus(-1L);
-        log.warn("开始查询，status={}", extract.getStatus());
-        list = TableStoreUtils.searchBysecondaryIndex(extract, DocumentExtract.class, 10);
+        List<String> columnsToGet = new LinkedList<>();
+        columnsToGet.add("dochtmlcon");
+
+        List<DocumentExtract> list = TableStoreUtils.searchBysecondaryIndex(extract, DocumentExtract.class, columnsToGet, 2);
         log.warn("查询结果={}", list.size());
     }
 
@@ -207,7 +206,7 @@ public class UpdateTest {
         List<Document> list = new LinkedList<>();
         list.add(d1);
         list.add(d2);
-        List<Document> documents = TableStoreUtils.batchGetRow(list, Document.class);
+        List<Document> documents = TableStoreUtils.batchGetRow(list, Document.class, null);
         System.out.println(documents);
     }
 

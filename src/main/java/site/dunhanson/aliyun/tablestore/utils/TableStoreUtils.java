@@ -9,6 +9,7 @@ import com.alicloud.openservices.tablestore.model.search.SearchQuery;
 import com.alicloud.openservices.tablestore.model.search.SearchRequest;
 import com.alicloud.openservices.tablestore.model.search.SearchResponse;
 import com.alicloud.openservices.tablestore.model.search.query.*;
+import com.google.common.collect.Lists;
 import com.google.gson.Gson;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -847,10 +848,30 @@ public class TableStoreUtils {
      * 通过主键批量获取
      * @param list
      * @param clazz
+     * @param columnsToGet  添加要读取的列集合
      * @param <T>
      * @return
      */
-    public static <T> List<T> batchGetRow(List<T> list , Class<T> clazz) {
+    public static <T> List<T> batchGetRow(List<T> list , Class<T> clazz, Collection<String> columnsToGet) {
+        List<T> result = new LinkedList<>();
+        if (list != null) {
+            List<List<T>> batches = Lists.partition(list, 100);     // 因为ots最大能支持100所以分批处理了
+            for (List<T> batch : batches) {
+                result.addAll(batchGetRowFor100(batch, clazz, columnsToGet));
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 通过主键批量获取（list最多100，否则报错）
+     * @param list
+     * @param clazz
+     * @param columnsToGet      添加要读取的列集合
+     * @param <T>
+     * @return
+     */
+    private static <T> List<T> batchGetRowFor100(List<T> list , Class<T> clazz, Collection<String> columnsToGet) {
         BasicInfo aliasBasicInfo = buildBasicInfo(getAlias(list.get(0)));
 
         MultiRowQueryCriteria multiRowQueryCriteria = new MultiRowQueryCriteria(aliasBasicInfo.getTableName());
@@ -873,18 +894,13 @@ public class TableStoreUtils {
         }
 
 
-        // 添加其他查询条件
-//        multiRowQueryCriteria.addColumnsToGet("Col0");
-//        multiRowQueryCriteria.addColumnsToGet("Col1");
-//
-//        SingleColumnValueFilter singleColumnValueFilter = new SingleColumnValueFilter("Col0",
-//                SingleColumnValueFilter.CompareOperator.EQUAL, ColumnValue.fromLong(0));
-//        singleColumnValueFilter.setPassIfMissing(false);
-//        multiRowQueryCriteria.setFilter(singleColumnValueFilter);
 
         BatchGetRowRequest batchGetRowRequest = new BatchGetRowRequest();
         // batchGetRow支持读取多个表的数据， 一个multiRowQueryCriteria对应一个表的查询条件，可以添加多个multiRowQueryCriteria.
         multiRowQueryCriteria.setMaxVersions(1);
+        if (columnsToGet != null && columnsToGet.size() > 0) {
+            multiRowQueryCriteria.addColumnsToGet(columnsToGet);
+        }
         batchGetRowRequest.addMultiRowQueryCriteria(multiRowQueryCriteria);
 
         BatchGetRowResponse batchGetRowResponse = getSyncClient(aliasBasicInfo).batchGetRow(batchGetRowRequest);
@@ -904,7 +920,10 @@ public class TableStoreUtils {
         List<T> result = new LinkedList<>();
         List<BatchGetRowResponse.RowResult> succeedRows = batchGetRowResponse.getSucceedRows();
         for (BatchGetRowResponse.RowResult rowResult : succeedRows) {
-            result.add(rowToEntity(rowResult.getRow(), clazz));
+            Row row = rowResult.getRow();
+            if (row != null) {
+                result.add(rowToEntity(row, clazz));
+            }
         }
         return result;
     }
@@ -952,25 +971,29 @@ public class TableStoreUtils {
 
     /**
      * 根据二级索引查找（ps：只支持一个，即第一个不为空的二级索引）
+     * 因为其他字段没有，所以反查主表
      * @param entity
      * @param clazz
+     * @param columnsToGet
      * @param <T>
      * @return
      */
-    public static <T> List<T> searchBysecondaryIndex(T entity,  Class<T> clazz){
-        return searchBysecondaryIndex(entity, clazz, 0);
+    public static <T> List<T> searchBysecondaryIndex(T entity,  Class<T> clazz, Collection<String> columnsToGet){
+        return searchBysecondaryIndex(entity, clazz, columnsToGet, 0);
     }
 
 
     /**
      * 根据二级索引查找（ps：只支持一个，即第一个不为空的二级索引）
+     * 因为其他字段没有，所以反查主表
      * @param entity
      * @param clazz
-     * @param limit     获取的条数（如果小1则全查）
+     * @param columnsToGet      添加要读取的列集合
+     * @param limit             获取的条数（如果小1则全查）
      * @param <T>
      * @return
      */
-    public static <T> List<T> searchBysecondaryIndex(T entity,  Class<T> clazz, int limit) {
+    public static <T> List<T> searchBysecondaryIndex(T entity,  Class<T> clazz, Collection<String> columnsToGet, int limit) {
         List<T> result = new LinkedList<>();
         // 1、获取表的配置信息
         BasicInfo aliasBasicInfo = buildBasicInfo(getAlias(clazz));
@@ -1023,6 +1046,12 @@ public class TableStoreUtils {
             for (Row row : getRangeResponse.getRows()) {
                 result.add(rowToEntity(row, clazz));
             }
+
+            // 如果需要其他字段需要反查主表
+            if (columnsToGet != null && columnsToGet.size() > 0) {
+                result = batchGetRow(result, clazz, columnsToGet);
+            }
+
             //
 //            while (true) {
 //                GetRangeResponse getRangeResponse = syncClient.getRange(new GetRangeRequest(rangeRowQueryCriteria));
