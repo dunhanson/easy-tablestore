@@ -194,6 +194,22 @@ public class UpdateTest {
 
     }
 
+    @Test
+    public void testBatchGetRow() {
+        Document d1 = new Document();
+        d1.setPageTime("1403-02-08");
+        d1.setDocid(46445155L);
+        Document d2 = new Document();
+        d2.setPageTime("1403-02-08");
+        d2.setDocid(46446290L);
+
+
+        List<Document> list = new LinkedList<>();
+        list.add(d1);
+        list.add(d2);
+        List<Document> documents = TableStoreUtils.batchGetRow(list, Document.class);
+        System.out.println(documents);
+    }
 
 
 }

@@ -846,8 +846,11 @@ public class TableStoreUtils {
     /**
      * 通过主键批量获取
      * @param list
+     * @param clazz
+     * @param <T>
+     * @return
      */
-    private static void batchGetRow(List list) {
+    public static <T> List<T> batchGetRow(List<T> list , Class<T> clazz) {
         BasicInfo aliasBasicInfo = buildBasicInfo(getAlias(list.get(0)));
 
         MultiRowQueryCriteria multiRowQueryCriteria = new MultiRowQueryCriteria(aliasBasicInfo.getTableName());
@@ -869,8 +872,6 @@ public class TableStoreUtils {
             multiRowQueryCriteria.addRow(primaryKey);
         }
 
-        // 创建 SyncClient
-        SyncClient client = getSyncClient(aliasBasicInfo);
 
         // 添加其他查询条件
 //        multiRowQueryCriteria.addColumnsToGet("Col0");
@@ -886,21 +887,26 @@ public class TableStoreUtils {
         multiRowQueryCriteria.setMaxVersions(1);
         batchGetRowRequest.addMultiRowQueryCriteria(multiRowQueryCriteria);
 
-        BatchGetRowResponse batchGetRowResponse = client.batchGetRow(batchGetRowRequest);
-
-        System.out.println("是否全部成功：" + batchGetRowResponse.isAllSucceed());
+        BatchGetRowResponse batchGetRowResponse = getSyncClient(aliasBasicInfo).batchGetRow(batchGetRowRequest);
         if (!batchGetRowResponse.isAllSucceed()) {
             for (BatchGetRowResponse.RowResult rowResult : batchGetRowResponse.getFailedRows()) {
-                System.out.println("失败的行：" + batchGetRowRequest.getPrimaryKey(rowResult.getTableName(), rowResult.getIndex()));
-                System.out.println("失败原因：" + rowResult.getError());
+                log.warn("失败的行：" + batchGetRowRequest.getPrimaryKey(rowResult.getTableName(), rowResult.getIndex()));
+                log.warn("失败原因：" + rowResult.getError());
             }
 
-            /**
-             * 可以通过createRequestForRetry方法再构造一个请求对失败的行进行重试。这里只给出构造重试请求的部分。
-             * 推荐的重试方法是使用SDK的自定义重试策略功能，支持对batch操作的部分行错误进行重试。设定重试策略后， 调用接口处即不需要增加重试代码.
-             */
-            BatchGetRowRequest retryRequest = batchGetRowRequest.createRequestForRetry(batchGetRowResponse.getFailedRows());
+//            /**
+//             * 可以通过createRequestForRetry方法再构造一个请求对失败的行进行重试。这里只给出构造重试请求的部分。
+//             * 推荐的重试方法是使用SDK的自定义重试策略功能，支持对batch操作的部分行错误进行重试。设定重试策略后， 调用接口处即不需要增加重试代码.
+//             */
+//            BatchGetRowRequest retryRequest = batchGetRowRequest.createRequestForRetry(batchGetRowResponse.getFailedRows());
         }
+
+        List<T> result = new LinkedList<>();
+        List<BatchGetRowResponse.RowResult> succeedRows = batchGetRowResponse.getSucceedRows();
+        for (BatchGetRowResponse.RowResult rowResult : succeedRows) {
+            result.add(rowToEntity(rowResult.getRow(), clazz));
+        }
+        return result;
     }
 
 
