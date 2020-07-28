@@ -1007,6 +1007,7 @@ public class TableStoreUtils {
         // 2.1、设置索引表PK（即：二级索引，只支持一个）（查询时 二级索引表的PK要放在主表之前，要不然会报错）
         RangeRowQueryCriteria rangeRowQueryCriteria = null;
         List<String> secondaryIndexList = aliasBasicInfo.getSecondaryIndex();
+        String secondaryIndexName = "";     // 当前需要查询的二级索引
         for (String secondaryIndex : secondaryIndexList) {
             String key = secondaryIndex.replace(aliasBasicInfo.getTableName() + "_index2_", "");
             Object value = jsonObject.get(underlineToHump(key));
@@ -1019,6 +1020,7 @@ public class TableStoreUtils {
                     endPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromString((String) value)); // 索引表PK最大值。
                 }
                 rangeRowQueryCriteria = new RangeRowQueryCriteria(secondaryIndex);
+                secondaryIndexName = key;
                 break;
             }
         }
@@ -1026,8 +1028,10 @@ public class TableStoreUtils {
         // 2、设置主表PK（任意范围）
         List<String> primaryKeyList = aliasBasicInfo.getPrimaryKey();
         for (String key : primaryKeyList) {
-            startPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.INF_MIN); // 主表PK最小值。
-            endPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.INF_MAX); // 主表PK最大值。
+            if (!key.equals(secondaryIndexName)) {  // 排除二级索引
+                startPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.INF_MIN); // 主表PK最小值。
+                endPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.INF_MAX); // 主表PK最大值。
+            }
         }
 
         // 查询

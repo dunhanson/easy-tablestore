@@ -14,5 +14,5 @@ public class Document {
     private String area;
     private String province;
     private String city;
-    private Date publishtime;
+    private String publishtime;
 }

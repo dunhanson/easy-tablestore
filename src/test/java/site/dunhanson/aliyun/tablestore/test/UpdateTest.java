@@ -43,6 +43,18 @@ public class UpdateTest {
         log.warn("查询结果={}", list.size());
     }
 
+    /**
+     * 根据二级索引查找
+     */
+    @Test
+    public void testSearchBysecondaryIndex() {
+       Document document = new Document();
+       document.setDocid(1L);
+
+        List<Document> list = TableStoreUtils.searchBysecondaryIndex(document, Document.class, null, 2);
+        log.warn("查询结果={}", list.size());
+    }
+
 
     /**
      * 测试新增
