@@ -752,9 +752,25 @@ public class TableStoreUtils {
 
 
     /**
-     * 批量更新（更新不为空的字段，不能超过200以后测试）
+     * 根据主键批量删除
+     * @param list
+     * @return
      */
     public static int batchUpdate(List list) {
+        int num = 0;
+        if (list != null) {
+            List<List> batches = Lists.partition(list, 200);
+            for (List batch : batches) {
+                num += batchUpdateFor200(batch);
+            }
+        }
+        return num;
+    }
+
+    /**
+     * 批量更新（更新不为空的字段，不能超过200）
+     */
+    private static int batchUpdateFor200(List list) {
         int num = 0;
         if (list != null && list.size() > 0) {
             BasicInfo aliasBasicInfo = buildBasicInfo(getAlias(list.get(0)));
@@ -786,8 +802,26 @@ public class TableStoreUtils {
 
     /**
      * 根据主键批量删除
+     * @param list
+     * @return
      */
     public static int batchDelete(List list) {
+        int num = 0;
+        if (list != null) {
+            List<List> batches = Lists.partition(list, 200);
+            for (List batch : batches) {
+                num += batchDeleteFor200(batch);
+            }
+        }
+        return num;
+    }
+
+    /**
+     * 根据主键批量删除（一次最多删除200）
+     * @param list
+     * @return
+     */
+    private static int batchDeleteFor200(List list) {
         int num = 0;
         if (list != null && list.size() > 0) {
             BasicInfo aliasBasicInfo = buildBasicInfo(getAlias(list.get(0)));
