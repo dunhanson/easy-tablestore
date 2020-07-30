@@ -30,16 +30,11 @@ public class UpdateTest {
      * 根据二级索引查找
      */
     @Test
-    public void testGetRange() {
+    public void testSearchBysecondaryIndexForGetRange() {
         DocumentExtract extract = new DocumentExtract();
-
         extract.setStatus(1L);
         log.warn("开始查询，status={}", extract.getStatus());
-
-        List<String> columnsToGet = new LinkedList<>();
-        columnsToGet.add("dochtmlcon");
-
-        List<DocumentExtract> list = TableStoreUtils.searchBysecondaryIndex(extract, DocumentExtract.class, columnsToGet, 2);
+        List<DocumentExtract> list = TableStoreUtils.searchBysecondaryIndex(extract, DocumentExtract.class, null, 20);
         log.warn("查询结果={}", list.size());
     }
 
@@ -48,11 +43,18 @@ public class UpdateTest {
      */
     @Test
     public void testSearchBysecondaryIndex() {
-       Document document = new Document();
-       document.setDocid(1L);
-
+        Document document = new Document();
+        document.setDocid(1L);
+        log.warn("开始查询");
         List<Document> list = TableStoreUtils.searchBysecondaryIndex(document, Document.class, null, 2);
         log.warn("查询结果={}", list.size());
+
+        Document document2 = new Document();
+        document2.setDocid(-1L);
+        List<Document> list2 = TableStoreUtils.searchBysecondaryIndex(document2, Document.class, null, 2);
+        log.warn("查询结果={}", list2.size());
+
+
     }
 
 

@@ -1059,62 +1059,60 @@ public class TableStoreUtils {
             }
         }
 
-        // 2、设置主表PK（任意范围）
+        // 2.2、设置主表PK（任意范围）
         List<String> primaryKeyList = aliasBasicInfo.getPrimaryKey();
         for (String key : primaryKeyList) {
-            if (!key.equals(secondaryIndexName)) {  // 排除二级索引
+            if (!key.equals(secondaryIndexName)) {  // 排除当前正在查询的二级索引
                 startPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.INF_MIN); // 主表PK最小值。
                 endPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.INF_MAX); // 主表PK最大值。
             }
         }
 
-        // 查询
+        // 3、查询
         if (rangeRowQueryCriteria != null) {
-            rangeRowQueryCriteria.setInclusiveStartPrimaryKey(startPrimaryKeyBuilder.build());
-            rangeRowQueryCriteria.setExclusiveEndPrimaryKey(endPrimaryKeyBuilder.build());
-            // 设置读取最新版本
-            rangeRowQueryCriteria.setMaxVersions(1);
+            rangeRowQueryCriteria.setInclusiveStartPrimaryKey(startPrimaryKeyBuilder.build());  // 开始主键
+            rangeRowQueryCriteria.setExclusiveEndPrimaryKey(endPrimaryKeyBuilder.build());      // 结束主键
+            rangeRowQueryCriteria.setMaxVersions(1);                                            // 设置读取最新版本
+            if (limit > 0) {                                                                    // 默认一次扫描5000，如果有指定limit，设置成1000
+                rangeRowQueryCriteria.setLimit(1000);
+            }
+
+            // 4、循环扫描（因为数据是分区的，所以需要分区扫描）
             SyncClient syncClient = getSyncClient(aliasBasicInfo);
+            boolean completed = false;
+            long index = 0;
+            while (true) {
+                log.debug("第{}获取，准备获取数量={}", ++index, rangeRowQueryCriteria.getLimit());
+                GetRangeResponse getRangeResponse = syncClient.getRange(new GetRangeRequest(rangeRowQueryCriteria));
+                List<Row> rows = getRangeResponse.getRows();
+                log.debug("第{}获取，成功获取的数量={}", index, rows.size());
+                // 1、处理 limit
+                if (limit > 0) {
+                    for (Row row : rows) {
+                        if (result.size() >= limit) {
+                            completed = true;
+                            break;
+                        } else {
+                            result.add(rowToEntity(row, clazz));
+                        }
+                    }
+                } else {
+                    for (Row row : rows) {
+                        result.add(rowToEntity(row, clazz));
+                    }
+                }
 
-            // 分页查询（默认5000，如果查过5000的需要遍历查询）
-            if (limit > 0) {
-                rangeRowQueryCriteria.setLimit(limit);
+                // 若nextStartPrimaryKey不为null，则继续读取。
+                if (getRangeResponse.getNextStartPrimaryKey() != null && !completed) {
+                    rangeRowQueryCriteria.setInclusiveStartPrimaryKey(getRangeResponse.getNextStartPrimaryKey());
+                } else {
+                    break;
+                }
             }
-            GetRangeResponse getRangeResponse = syncClient.getRange(new GetRangeRequest(rangeRowQueryCriteria));
-            for (Row row : getRangeResponse.getRows()) {
-                result.add(rowToEntity(row, clazz));
-            }
-
             // 如果需要其他字段需要反查主表
             result = batchGetRow(result, clazz, columnsToGet);
-
-            //
-//            while (true) {
-//                GetRangeResponse getRangeResponse = syncClient.getRange(new GetRangeRequest(rangeRowQueryCriteria));
-//                if (limit > 0) {
-//                    for (Row row : getRangeResponse.getRows()) {
-//                        if (result.size() < limit) {
-//                            result.add(rowToEntity(row, clazz));
-//                        }
-//                    }
-//                } else {
-//                    for (Row row : getRangeResponse.getRows()) {
-//                        result.add(rowToEntity(row, clazz));
-//                    }
-//                }
-//
-//                // 若nextStartPrimaryKey不为null，则继续读取。
-//                if (getRangeResponse.getNextStartPrimaryKey() != null) {
-//                    rangeRowQueryCriteria.setInclusiveStartPrimaryKey(getRangeResponse.getNextStartPrimaryKey());
-//                } else {
-//                    break;
-//                }
-//            }
         }
-
         return result;
     }
-
-
 
 }
