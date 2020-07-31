@@ -1,19 +1,15 @@
 package site.dunhanson.aliyun.tablestore.test.demo;
 
-import com.alicloud.openservices.tablestore.core.protocol.Search;
 import com.alicloud.openservices.tablestore.model.ColumnValue;
 import com.alicloud.openservices.tablestore.model.search.SearchQuery;
 import com.alicloud.openservices.tablestore.model.search.query.*;
-import com.google.gson.Gson;
-import org.apache.commons.lang3.StringUtils;
 import org.junit.Test;
 import site.dunhanson.aliyun.tablestore.entity.Document;
-import site.dunhanson.aliyun.tablestore.utils.TableStoreUtils;
+import site.dunhanson.aliyun.tablestore.utils.TableStoreMultipleIndexUtils;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Queue;
 
 public class SearchQueryTest {
 
@@ -67,36 +63,36 @@ public class SearchQueryTest {
         BoolQuery boolQuery = new BoolQuery();
         boolQuery.setShouldQueries(queryList3);
 
-        System.out.println(TableStoreUtils.getQueryString(boolQuery));
+        System.out.println(TableStoreMultipleIndexUtils.getQueryString(boolQuery));
     }
 
     @Test
     public void test() {
         SearchQuery searchQuery = new SearchQuery();
-        System.out.println(TableStoreUtils.getQueryString(searchQuery.getQuery()));
+        System.out.println(TableStoreMultipleIndexUtils.getQueryString(searchQuery.getQuery()));
     }
 
     @Test
     public void start() {
-        System.out.println("匹配所有行:" + TableStoreUtils.getQueryString(getMatchAllQuery()));
-        System.out.println("匹配查询:" + TableStoreUtils.getQueryString(getMatchQuery()));
-        System.out.println("短语匹配查询:" + TableStoreUtils.getQueryString(getMatchPhraseQuery()));
-        System.out.println("精确查询:" + TableStoreUtils.getQueryString(getTermQuery()));
-        System.out.println("多词精确查询:" + TableStoreUtils.getQueryString(getTermsQuery()));
-        System.out.println("前缀查询:" + TableStoreUtils.getQueryString(getPrefixQuery()));
-        System.out.println("范围查询:" + TableStoreUtils.getQueryString(getRangeQuery()));
-        System.out.println("通配符查询:" + TableStoreUtils.getQueryString(getWildcardQuery()));
-        System.out.println("复合条件组合查询-MustQueries:" + TableStoreUtils.getQueryString(getBoolQueryMustQueries()));
-        System.out.println("复合条件组合查询-MustNotQueries:" + TableStoreUtils.getQueryString(getBoolQueryMustNotQueries()));
-        System.out.println("复合条件组合查询-ShouldQueries:" + TableStoreUtils.getQueryString(getBoolQueryShouldQueries()));
-        System.out.println("复合条件组合查询-FilterQueries:" + TableStoreUtils.getQueryString(getBoolQueryFilterQueries()));
+        System.out.println("匹配所有行:" + TableStoreMultipleIndexUtils.getQueryString(getMatchAllQuery()));
+        System.out.println("匹配查询:" + TableStoreMultipleIndexUtils.getQueryString(getMatchQuery()));
+        System.out.println("短语匹配查询:" + TableStoreMultipleIndexUtils.getQueryString(getMatchPhraseQuery()));
+        System.out.println("精确查询:" + TableStoreMultipleIndexUtils.getQueryString(getTermQuery()));
+        System.out.println("多词精确查询:" + TableStoreMultipleIndexUtils.getQueryString(getTermsQuery()));
+        System.out.println("前缀查询:" + TableStoreMultipleIndexUtils.getQueryString(getPrefixQuery()));
+        System.out.println("范围查询:" + TableStoreMultipleIndexUtils.getQueryString(getRangeQuery()));
+        System.out.println("通配符查询:" + TableStoreMultipleIndexUtils.getQueryString(getWildcardQuery()));
+        System.out.println("复合条件组合查询-MustQueries:" + TableStoreMultipleIndexUtils.getQueryString(getBoolQueryMustQueries()));
+        System.out.println("复合条件组合查询-MustNotQueries:" + TableStoreMultipleIndexUtils.getQueryString(getBoolQueryMustNotQueries()));
+        System.out.println("复合条件组合查询-ShouldQueries:" + TableStoreMultipleIndexUtils.getQueryString(getBoolQueryShouldQueries()));
+        System.out.println("复合条件组合查询-FilterQueries:" + TableStoreMultipleIndexUtils.getQueryString(getBoolQueryFilterQueries()));
     }
 
     @Test
     public void query() {
         SearchQuery searchQuery = new SearchQuery();
         searchQuery.setQuery(getWildcardQuery());
-        TableStoreUtils.search(searchQuery, Document.class).getList().forEach(obj->{
+        TableStoreMultipleIndexUtils.search(searchQuery, Document.class).getList().forEach(obj->{
             System.out.println(obj.getDoctitle());
         });
     }

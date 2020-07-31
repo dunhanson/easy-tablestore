@@ -8,20 +8,10 @@ import java.util.List;
 /**
  * @author dunhanson
  * @date 2020.03.20
- * @description TableStore基础信息
+ * @description TableStore表的基础信息
  */
 @Data
-@AllArgsConstructor
-@NoArgsConstructor
-public class BasicInfo {
-    /**endPoint**/
-    private String endPoint;
-    /**accessKeyId**/
-    private String accessKeyId;
-    /**accessKeySecret**/
-    private String accessKeySecret;
-    /**instanceName**/
-    private String instanceName;
+public class TableInfo {
     /**表名**/
     private String tableName;
     /**主键List集合**/
@@ -32,6 +22,6 @@ public class BasicInfo {
     private List<String> indexName;
     /**忽略字段List集合**/
     private List<String> ignoreColumn;
-    /**分页限制数**/
+    /**默认分页大小**/
     private Integer limit;
 }

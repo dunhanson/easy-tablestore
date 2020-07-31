@@ -5,17 +5,14 @@ import com.alicloud.openservices.tablestore.model.search.query.BoolQuery;
 import com.alicloud.openservices.tablestore.model.search.query.MatchQuery;
 import com.alicloud.openservices.tablestore.model.search.query.Query;
 import org.apache.commons.lang3.RandomUtils;
-import org.checkerframework.dataflow.qual.TerminatesExecution;
 import org.junit.Test;
 import site.dunhanson.aliyun.tablestore.entity.Document;
 import site.dunhanson.aliyun.tablestore.entity.Page;
 import site.dunhanson.aliyun.tablestore.entity.Str;
-import site.dunhanson.aliyun.tablestore.utils.TableStoreUtils;
+import site.dunhanson.aliyun.tablestore.utils.TableStoreMultipleIndexUtils;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.time.temporal.TemporalUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -34,7 +31,7 @@ public class Start {
         query.setText("52");
         searchQuery.setQuery(query);
         //查询
-        Page<Document> page = TableStoreUtils.search(searchQuery, Document.class, true);
+        Page<Document> page = TableStoreMultipleIndexUtils.search(searchQuery, Document.class, true);
         System.out.println("offset:" + page.getOffset());
         System.out.println("limit:" + page.getLimit());
         System.out.println("totalPage:" + page.getTotalPage());
@@ -74,7 +71,7 @@ public class Start {
         searchQuery.setQuery(boolQuery);
 
         //查询
-        TableStoreUtils.search(searchQuery, Document.class, true);
+        TableStoreMultipleIndexUtils.search(searchQuery, Document.class, true);
     }
 
     @Test
@@ -109,7 +106,7 @@ public class Start {
         searchQuery.setQuery(boolQuery);
 
         //查询
-        Page<Document> page = TableStoreUtils.search(searchQuery, Document.class, true);
+        Page<Document> page = TableStoreMultipleIndexUtils.search(searchQuery, Document.class, true);
         page.getList().forEach(obj->{
             System.out.println(obj);
         });

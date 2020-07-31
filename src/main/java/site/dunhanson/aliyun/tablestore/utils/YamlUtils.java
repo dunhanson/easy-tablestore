@@ -25,13 +25,9 @@ public class YamlUtils {
         Map<String, Object> map = basicMap.get(path);
         if(map == null) {
             Yaml yaml = new Yaml();
-            try(InputStream inputStream = TableStoreUtils.class.getClassLoader().getResourceAsStream(path)) {
+            try(InputStream inputStream = TableStoreMultipleIndexUtils.class.getClassLoader().getResourceAsStream(path)) {
                 basicMap.put(path, yaml.load(inputStream));
                 map = basicMap.get(path);
-                Object tableStore = map.get("tableStore");
-                if (tableStore != null) {
-                    log.warn("tableStore环境={}", ((Map<String, Object>) tableStore).get("default"));
-                }
             } catch (Exception e) {
                 e.printStackTrace();
             }
