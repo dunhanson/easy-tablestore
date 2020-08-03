@@ -13,8 +13,8 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 
 /**
- * @author dunhanson
- * @date 2020.03.20
+ * @author chenjiaru
+ * @date 2020.08.01
  * @description TableStore工具类（主表和二级索引工具，多元索引请使用 {@link TableStoreMultipleIndexUtils} ）
  */
 @Slf4j
