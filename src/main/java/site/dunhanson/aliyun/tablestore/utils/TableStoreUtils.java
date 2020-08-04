@@ -2,6 +2,8 @@ package site.dunhanson.aliyun.tablestore.utils;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.PropertyNamingStrategy;
+import com.alibaba.fastjson.serializer.SerializeConfig;
 import com.alicloud.openservices.tablestore.SyncClient;
 import com.alicloud.openservices.tablestore.TableStoreException;
 import com.alicloud.openservices.tablestore.model.*;
@@ -9,6 +11,7 @@ import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
 import site.dunhanson.aliyun.tablestore.entity.TableInfo;
 
+import java.lang.reflect.Field;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
@@ -21,58 +24,74 @@ import java.util.*;
 public class TableStoreUtils {
 
     /**
+     * SerializeConfig全局一个即可
+     */
+    private static SerializeConfig serializeConfig = new SerializeConfig();
+    static {
+        serializeConfig.propertyNamingStrategy = PropertyNamingStrategy.SnakeCase;
+    }
+
+    /**
      * 新增（如果该记录存在则完成覆盖更新）
      * @param obj   实体类对象实例
      * @return
      */
     public static int insert(Object obj) {
-        // 获取表的配置信息
-        TableInfo aliasBasicInfo = CommonUtils.getTableInfo(obj);
-        SyncClient client = Store.getInstance().getSyncClient();
+        int num = 0;
+        if (obj != null) {
+            // 获取表的配置信息
+            TableInfo aliasBasicInfo = CommonUtils.getTableInfo(obj);
+            SyncClient client = Store.getInstance().getSyncClient();
 
-        JSONObject jsonObject = (JSONObject) JSON.toJSON(obj);
 
-        // 1、构造主键
-        PrimaryKeyBuilder primaryKeyBuilder = PrimaryKeyBuilder.createPrimaryKeyBuilder();
-        List<String> primaryKeyList = aliasBasicInfo.getPrimaryKey();
-        for (String key : primaryKeyList) {
-            Object value = jsonObject.get(CommonUtils.underlineToHump(key));
-            if (value.getClass().getSimpleName().equals("Long")) {
-                primaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromLong((Long) value));
-            } else {
-                primaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromString((String) value));
-            }
-        }
-        PrimaryKey primaryKey = primaryKeyBuilder.build();
-        RowPutChange rowPutChange = new RowPutChange(aliasBasicInfo.getTableName(), primaryKey);
-
-        // 2、设置其他属性
-        for (Map.Entry<String, Object> map : jsonObject.entrySet()) {
-            String key = map.getKey();
-            Object value = map.getValue();
-            key = CommonUtils.humpToUnderline(key);     // 驼峰转下划线
-            if (!primaryKeyList.contains(key) && value != null) {       // 非主键 非空 判断
-                if (value.getClass().getSimpleName().equals("String")) {      // 待完善 其他类型当成字符串处理，目前是够用的
-                    rowPutChange.addColumn(new Column(key, ColumnValue.fromString((String) value)));
-                } else if (value.getClass().getSimpleName().equals("Integer")) {
-                    rowPutChange.addColumn(new Column(key, ColumnValue.fromLong((Integer) value)));
-                } else if (value.getClass().getSimpleName().equals("Long")) {
-                    rowPutChange.addColumn(new Column(key, ColumnValue.fromLong((Long) value)));
-                } else if (value.getClass().getSimpleName().equals("Double")) {
-                    rowPutChange.addColumn(new Column(key, ColumnValue.fromDouble(Double.valueOf(value.toString()))));
-                }  else if (value.getClass().getSimpleName().equals("Boolean")) {
-                    rowPutChange.addColumn(new Column(key, ColumnValue.fromBoolean(Boolean.valueOf(value.toString()))));
-                } else if (value.getClass().getSimpleName().equals("Date"))  {
-                    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                    String format = sdf.format(value);
-                    rowPutChange.addColumn(new Column(key, ColumnValue.fromString(format)));
+            Map<String, Field> fieldMap = CommonUtils.getFieldMap(obj.getClass());
+            // 1、构造主键
+            PrimaryKeyBuilder primaryKeyBuilder = PrimaryKeyBuilder.createPrimaryKeyBuilder();
+            List<String> primaryKeyList = aliasBasicInfo.getPrimaryKey();
+            for (String key : primaryKeyList) {
+                Field field = fieldMap.get(CommonUtils.underlineToHump(key));
+                Object value = CommonUtils.getFieldValue(field, obj);
+                if (field.getType().getSimpleName().equals("Long")) {
+                    primaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromLong((Long) value));
+                } else {
+                    primaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromString((String) value));
                 }
             }
-        }
+            PrimaryKey primaryKey = primaryKeyBuilder.build();
+            RowPutChange rowPutChange = new RowPutChange(aliasBasicInfo.getTableName(), primaryKey);
 
-        // 3、写入
-        PutRowResponse putRowResponse = client.putRow(new PutRowRequest(rowPutChange));
-        int num = putRowResponse.getConsumedCapacity().getCapacityUnit().getWriteCapacityUnit();
+            // 2、设置其他属性
+            for (Map.Entry<String, Field> map : fieldMap.entrySet()) {
+                String key = map.getKey();
+                Field field = map.getValue();
+                Object value = CommonUtils.getFieldValue(field, obj);
+                key = CommonUtils.humpToUnderline(key);     // 驼峰转下划线
+                if (!primaryKeyList.contains(key) && value != null) {       // 非主键 非空 判断
+                    if (field.getType().getSimpleName().equals("String")) {      // 待完善 其他类型当成字符串处理，目前是够用的
+                        rowPutChange.addColumn(new Column(key, ColumnValue.fromString((String) value)));
+                    } else if (field.getType().getSimpleName().equals("Integer")) {
+                        rowPutChange.addColumn(new Column(key, ColumnValue.fromLong((Integer) value)));
+                    } else if (field.getType().getSimpleName().equals("Long")) {
+                        rowPutChange.addColumn(new Column(key, ColumnValue.fromLong((Long) value)));
+                    } else if (field.getType().getSimpleName().equals("Double")) {
+                        rowPutChange.addColumn(new Column(key, ColumnValue.fromDouble(Double.valueOf(value.toString()))));
+                    }  else if (field.getType().getSimpleName().equals("Boolean")) {
+                        rowPutChange.addColumn(new Column(key, ColumnValue.fromBoolean(Boolean.valueOf(value.toString()))));
+                    } else if (field.getType().getSimpleName().equals("Date"))  {
+                        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                        String format = sdf.format(value);
+                        rowPutChange.addColumn(new Column(key, ColumnValue.fromString(format)));
+                    } else if (value.toString().matches("^\\[.*\\]$")) { // json数组，ots只支持json数组的嵌套数据类型，需要把驼峰法转成下划线再入库
+                        String text = JSON.toJSONString(value, serializeConfig);
+                        rowPutChange.addColumn(new Column(key, ColumnValue.fromString(text)));
+                    }
+                }
+            }
+
+            // 3、写入
+            PutRowResponse putRowResponse = client.putRow(new PutRowRequest(rowPutChange));
+            num = putRowResponse.getConsumedCapacity().getCapacityUnit().getWriteCapacityUnit();
+        }
         return num;
     }
 

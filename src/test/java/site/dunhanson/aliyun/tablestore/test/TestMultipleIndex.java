@@ -8,8 +8,7 @@ import org.junit.Test;
 import site.dunhanson.aliyun.tablestore.entity.Document;
 import site.dunhanson.aliyun.tablestore.entity.Page;
 import site.dunhanson.aliyun.tablestore.utils.TableStoreMultipleIndexUtils;
-
-import java.util.Arrays;
+import java.util.*;
 
 /**
  * 常用 {@link Query} 用法（即：二级索引的使用demo）
@@ -29,6 +28,7 @@ public class TestMultipleIndex {
 
         SearchQuery searchQuery = new SearchQuery();
         searchQuery.setQuery(query);
+        searchQuery.setLimit(2);
         Page<Document> page = TableStoreMultipleIndexUtils.search(searchQuery, Document.class);
         print(page);
     }
@@ -122,7 +122,7 @@ public class TestMultipleIndex {
      */
     @Test
     public void testBoolQuery() {
-        // 条件1 col2 < 4
+        // 条件1 docid < 4
         RangeQuery rangeQuery1 = new RangeQuery();
         rangeQuery1.setFieldName("docid");
         rangeQuery1.lessThan(ColumnValue.fromLong(4));
@@ -151,6 +151,29 @@ public class TestMultipleIndex {
         print(page);
     }
 
+
+    /**
+     * 嵌套类型查询查询 格式：sub_docs_json:[{"win_tenderer":"比地1"},{"win_tenderer":"比地2"},{"win_tenderer":"比地3"},{"win_tenderer":"比地4"}]
+     *
+     */
+    @Test
+    public void testNestedQuery() {
+        NestedQuery query = new NestedQuery();
+        query.setPath("sub_docs_json");
+
+
+        TermQuery termQuery = new TermQuery(); // 构造NestedQuery的子查询
+        termQuery.setFieldName("sub_docs_json.win_tenderer"); // 设置字段名，注意带有Nested列的前缀
+        termQuery.setTerm(ColumnValue.fromString("比地2")); // 设置要查询的值
+        query.setQuery(termQuery);
+        query.setScoreMode(ScoreMode.None);
+
+        SearchQuery searchQuery = new SearchQuery();
+        searchQuery.setQuery(query);
+
+        Page<Document> page = TableStoreMultipleIndexUtils.search(searchQuery, Document.class);
+        print(page);
+    }
 
     private void print(Page page) {
         log.warn("offset:" + page.getOffset());

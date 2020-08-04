@@ -1,5 +1,7 @@
 package site.dunhanson.aliyun.tablestore.utils;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import com.alicloud.openservices.tablestore.model.Column;
 import com.alicloud.openservices.tablestore.model.PrimaryKeyColumn;
 import com.alicloud.openservices.tablestore.model.Row;
@@ -68,7 +70,7 @@ public class CommonUtils {
      * @param <T>
      * @return
      */
-    public static <T> T rowToEntity(Row row, Class<T> clazz) {
+    public static <T> T rowToEntity2(Row row, Class<T> clazz) {
         T entity = null;
         Map<String, Object> map = new HashMap<>();
         //遍历主键
@@ -101,6 +103,77 @@ public class CommonUtils {
         }
         //map转换成对象
         return gson.fromJson(gson.toJson(map), clazz);
+    }
+
+    /**
+     * 获取指定类的所有 Field 的map
+     * @param clazz
+     * @return
+     */
+    public static Map<String, Field> getFieldMap(Class clazz) {
+        Map<String, Field> map = new HashMap();
+        Field[] fields = clazz.getDeclaredFields();
+        for (Field field : fields) {
+            map.put(field.getName(), field);
+        }
+        return map;
+    }
+
+    public static <T> T rowToEntity(Row row, Class<T> clazz) {
+        T entity = null;
+        JSONObject obj = new JSONObject();
+        Map<String, Field> fieldMap = getFieldMap(clazz);
+        //遍历主键
+        PrimaryKeyColumn[] primaryKeyColumns = row.getPrimaryKey().getPrimaryKeyColumns();
+        for(PrimaryKeyColumn column : primaryKeyColumns) {
+            String name = column.getName();
+            Object value = null;
+            try {
+                value = column.getValue().toColumnValue().getValue();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            //包含下划线，转换成驼峰
+            if(name.contains(Constants.UNDERLINE)) {
+                name = underlineToHump(name);
+            }
+            obj.put(name, value);
+        }
+        //遍历列
+        Column[] columns = row.getColumns();
+        for(int i = 0; i < columns.length; i++) {
+            Column column = columns[i];
+            String name = column.getName();
+            Object value = column.getValue().getValue();
+            //包含下划线，转换成驼峰
+            if(name.contains(Constants.UNDERLINE)) {
+                name = underlineToHump(name);
+            }
+
+            if ("List".equals(fieldMap.get(name).getType().getSimpleName())) {  // 因为现在嵌套的只有json数组类型
+                obj.put(name, JSON.parseArray(value.toString()));
+            } else {
+                obj.put(name, value);
+            }
+        }
+        return JSON.parseObject(obj.toJSONString(), clazz);
+    }
+
+    /**
+     * 获取字段的值
+     * @param field {@link Field}
+     * @param obj    对应的对象
+     * @return
+     */
+    public static Object getFieldValue(Field field, Object obj) {
+        Object value = null;
+        try {
+            field.setAccessible(true);
+            value = field.get(obj);
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        return value;
     }
 
     /**

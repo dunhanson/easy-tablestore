@@ -242,21 +242,6 @@ public class Document {
     /**
      * 子标段集合
      */
-    private List<SubDocument> subDocs;
-
-    /**
-     * 子标段集合（json字符串格式）
-     */
-    private String subDocsJson;
-
-
-
-
-
-
-
-
-
-
+    private List<SubDocument> subDocsJson;
 
 }
