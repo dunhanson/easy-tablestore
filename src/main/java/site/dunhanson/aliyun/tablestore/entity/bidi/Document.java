@@ -1,4 +1,4 @@
-package site.dunhanson.aliyun.tablestore.entity;
+package site.dunhanson.aliyun.tablestore.entity.bidi;
 
 import lombok.Data;
 
@@ -56,9 +56,6 @@ public class Document {
      */
     private String district;
 
-
-
-
     /**
      * 文档状态(1：草稿;20：已发布；10：带审核；21：未通过)
      */
@@ -68,7 +65,6 @@ public class Document {
      * 文档内容（200字的摘要）
      */
     private String doccontent;
-
 
     /**
      * 关键词
@@ -183,7 +179,7 @@ public class Document {
 
 
 
-    // 提取出的 11 + 1+1个
+    // 提取出的 11 + 1
     /**
      * 项目名称
      */

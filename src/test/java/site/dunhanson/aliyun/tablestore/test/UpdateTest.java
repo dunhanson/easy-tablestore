@@ -2,7 +2,9 @@ package site.dunhanson.aliyun.tablestore.test;
 
 import lombok.extern.slf4j.Slf4j;
 import org.junit.Test;
-import site.dunhanson.aliyun.tablestore.entity.*;
+import site.dunhanson.aliyun.tablestore.entity.bidi.DocumentExtract;
+import site.dunhanson.aliyun.tablestore.entity.bidi.DocumentTemp;
+import site.dunhanson.aliyun.tablestore.entity.bidi.Enterprise;
 import site.dunhanson.aliyun.tablestore.utils.TableStoreUtils;
 
 import java.util.List;

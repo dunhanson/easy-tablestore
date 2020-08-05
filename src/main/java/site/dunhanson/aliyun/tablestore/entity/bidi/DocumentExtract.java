@@ -1,4 +1,4 @@
-package site.dunhanson.aliyun.tablestore.entity;
+package site.dunhanson.aliyun.tablestore.entity.bidi;
 import lombok.Data;
 
 /**
@@ -7,7 +7,7 @@ import lombok.Data;
 @Data
 public class DocumentExtract {
 
-    // 2+1+4
+    // 2+5
     /**
      * 页面时间
      */

@@ -6,7 +6,7 @@ import com.alicloud.openservices.tablestore.model.search.query.MatchQuery;
 import com.alicloud.openservices.tablestore.model.search.query.Query;
 import org.apache.commons.lang3.RandomUtils;
 import org.junit.Test;
-import site.dunhanson.aliyun.tablestore.entity.Document;
+import site.dunhanson.aliyun.tablestore.entity.bidi.Document;
 import site.dunhanson.aliyun.tablestore.entity.Page;
 import site.dunhanson.aliyun.tablestore.entity.Str;
 import site.dunhanson.aliyun.tablestore.utils.TableStoreMultipleIndexUtils;

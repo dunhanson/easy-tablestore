@@ -149,11 +149,14 @@ public class CommonUtils {
             if(name.contains(Constants.UNDERLINE)) {
                 name = underlineToHump(name);
             }
-
-            if ("List".equals(fieldMap.get(name).getType().getSimpleName())) {  // 因为现在嵌套的只有json数组类型
-                obj.put(name, JSON.parseArray(value.toString()));
-            } else {
-                obj.put(name, value);
+            Field field = fieldMap.get(name);
+            if (value != null && field != null) {
+//                if ("List".equals(field.getType().getSimpleName())) {  // 因为现在嵌套的只有json数组类型
+                if (value.toString().matches("^\\[.*\\]$")) {  // 因为现在嵌套的只有json数组类型
+                    obj.put(name, JSON.parseArray(value.toString()));
+                } else {
+                    obj.put(name, value);
+                }
             }
         }
         return JSON.parseObject(obj.toJSONString(), clazz);

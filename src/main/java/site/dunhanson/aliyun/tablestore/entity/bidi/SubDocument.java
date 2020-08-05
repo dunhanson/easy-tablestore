@@ -1,4 +1,4 @@
-package site.dunhanson.aliyun.tablestore.entity;
+package site.dunhanson.aliyun.tablestore.entity.bidi;
 
 import lombok.Data;
 

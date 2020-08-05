@@ -1,4 +1,4 @@
-package site.dunhanson.aliyun.tablestore.entity;
+package site.dunhanson.aliyun.tablestore.entity.bidi;
 
 import lombok.Data;
 
@@ -53,9 +53,6 @@ public class DocumentTemp {
      * 区县
      */
     private String district;
-
-
-
 
     /**
      * 文档状态(1：草稿;20：已发布；10：带审核；21：未通过)

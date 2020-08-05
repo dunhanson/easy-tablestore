@@ -5,9 +5,11 @@ import com.alicloud.openservices.tablestore.model.search.SearchQuery;
 import com.alicloud.openservices.tablestore.model.search.query.*;
 import lombok.extern.log4j.Log4j;
 import org.junit.Test;
-import site.dunhanson.aliyun.tablestore.entity.Document;
+import site.dunhanson.aliyun.tablestore.entity.bidi.Document;
 import site.dunhanson.aliyun.tablestore.entity.Page;
 import site.dunhanson.aliyun.tablestore.utils.TableStoreMultipleIndexUtils;
+import site.dunhanson.aliyun.tablestore.utils.TableStoreUtils;
+
 import java.util.*;
 
 /**
@@ -173,6 +175,15 @@ public class TestMultipleIndex {
 
         Page<Document> page = TableStoreMultipleIndexUtils.search(searchQuery, Document.class);
         print(page);
+
+        Document document = page.getList().get(0);
+        document.setPageTime("2020-01-06");
+        document.setDocid(6L);
+
+        int insert = TableStoreUtils.insert(document);
+        log.warn(insert);
+
+
     }
 
     private void print(Page page) {
