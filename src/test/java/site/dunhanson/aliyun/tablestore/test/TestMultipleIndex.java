@@ -3,6 +3,9 @@ package site.dunhanson.aliyun.tablestore.test;
 import com.alicloud.openservices.tablestore.model.ColumnValue;
 import com.alicloud.openservices.tablestore.model.search.SearchQuery;
 import com.alicloud.openservices.tablestore.model.search.query.*;
+import com.alicloud.openservices.tablestore.model.search.sort.FieldSort;
+import com.alicloud.openservices.tablestore.model.search.sort.Sort;
+import com.alicloud.openservices.tablestore.model.search.sort.SortOrder;
 import lombok.extern.log4j.Log4j;
 import org.junit.Test;
 import site.dunhanson.aliyun.tablestore.entity.bidi.Document;
@@ -161,9 +164,11 @@ public class TestMultipleIndex {
     @Test
     public void testNestedQuery() {
         NestedQuery query = new NestedQuery();
+
+        // 配置嵌套字段
         query.setPath("sub_docs_json");
 
-
+        // 需要查询的查询
         TermQuery termQuery = new TermQuery(); // 构造NestedQuery的子查询
         termQuery.setFieldName("sub_docs_json.win_tenderer"); // 设置字段名，注意带有Nested列的前缀
         termQuery.setTerm(ColumnValue.fromString("比地2")); // 设置要查询的值
@@ -173,17 +178,13 @@ public class TestMultipleIndex {
         SearchQuery searchQuery = new SearchQuery();
         searchQuery.setQuery(query);
 
+        // 排序 publishtime asc,docid asc
+        searchQuery.setSort(new Sort(Arrays.asList(
+                new FieldSort("publishtime", SortOrder.ASC),
+                new FieldSort("docid", SortOrder.DESC))));
+
         Page<Document> page = TableStoreMultipleIndexUtils.search(searchQuery, Document.class);
         print(page);
-
-        Document document = page.getList().get(0);
-        document.setPageTime("2020-01-06");
-        document.setDocid(6L);
-
-        int insert = TableStoreUtils.insert(document);
-        log.warn(insert);
-
-
     }
 
     private void print(Page page) {
