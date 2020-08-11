@@ -336,7 +336,7 @@ public class TableStoreUtils {
      * 通过主键批量获取
      * @param list           实体类对象实例集合
      * @param clazz          实体类
-     * @param columnsToGet  添加要读取的列集合
+     * @param columnsToGet  添加要读取的列集合（默认查全部）
      * @param <T>
      * @return
      */
@@ -349,6 +349,17 @@ public class TableStoreUtils {
             }
         }
         return result;
+    }
+
+    /**
+     * 通过主键批量获取
+     * @param list           实体类对象实例集合
+     * @param clazz          实体类
+     * @param <T>
+     * @return
+     */
+    public static <T> List<T> batchGetRow(List<T> list , Class<T> clazz) {
+        return batchGetRow(list, clazz, null);
     }
 
     /**
@@ -417,7 +428,6 @@ public class TableStoreUtils {
         return result;
     }
 
-
     /**
      * 根据主键获取一行记录
      * @param entity    实体类对象实例
@@ -426,34 +436,26 @@ public class TableStoreUtils {
      * @return
      */
     public static <T> T get(T entity, Class<T> clazz) {
-        // 获取表的配置信息
-        TableInfo tableInfo = CommonUtils.getTableInfo(clazz);
-        SyncClient client = Store.getInstance().getSyncClient();
+        return get(entity, clazz, null);
+    }
 
-        JSONObject jsonObject = (JSONObject) JSON.toJSON(entity);
-
-        // 1、构造主键
-        PrimaryKeyBuilder primaryKeyBuilder = PrimaryKeyBuilder.createPrimaryKeyBuilder();
-        List<String> primaryKeyList = tableInfo.getPrimaryKey();
-        for (String key : primaryKeyList) {
-            Object value = jsonObject.get(CommonUtils.underlineToHump(key));
-            if (value.getClass().getSimpleName().equals("Long")) {
-                primaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromLong((Long) value));
-            } else {
-                primaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromString((String) value));
-            }
-        }
-        PrimaryKey primaryKey = primaryKeyBuilder.build();
-
-        // 2、读一行
-        SingleRowQueryCriteria criteria = new SingleRowQueryCriteria(tableInfo.getTableName(), primaryKey);
-        // 设置读取最新版本
-        criteria.setMaxVersions(1);
-        GetRowResponse getRowResponse = client.getRow(new GetRowRequest(criteria));
-        Row row = getRowResponse.getRow();
+    /**
+     * 根据主键获取一行记录
+     * @param entity    实体类对象实例
+     * @param clazz     实体类
+     * @param columnsToGet  添加要读取的列集合（默认查全部）
+     * @param <T>
+     * @return
+     */
+    public static <T> T get(T entity, Class<T> clazz, Collection<String> columnsToGet) {
         T t = null;
-        if (row != null) {
-            t = CommonUtils.rowToEntity(row, clazz);
+        if (entity != null) {
+            List<T> list = new ArrayList<>();
+            list.add(entity);
+            List<T> result = batchGetRow(list, clazz, columnsToGet);
+            if (result != null && result.size() > 0) {
+                t = result.get(0);
+            }
         }
         return t;
     }

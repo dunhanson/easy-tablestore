@@ -69,7 +69,13 @@ public class UpdateTest {
 
         TableStoreUtils.insert(enterprise);
 
-        Enterprise enterprise1 = TableStoreUtils.get(enterprise, Enterprise.class);
+        List<String> columnsToGet = new ArrayList<>();
+
+        columnsToGet.add("area");
+        columnsToGet.add("court_announcement");
+
+
+        Enterprise enterprise1 = TableStoreUtils.get(enterprise, Enterprise.class, columnsToGet);
         System.out.println(enterprise1);
     }
 
