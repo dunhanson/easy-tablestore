@@ -62,8 +62,8 @@ public class TestMultipleIndex {
     public void testMatchQuery() {
         MatchQuery query = new MatchQuery();
         query.setFieldName("dochtmlcon");
-        query.setText("我来自广东");
-
+        query.setText("电梯");
+//        query.setOperator(QueryOperator.AND);     // QueryOperator.OR 代表分词之间的关系为or， QueryOperator.AND 代表分词之间的关系为and
 
         SearchQuery searchQuery = new SearchQuery();
         searchQuery.setQuery(query);
@@ -160,6 +160,7 @@ public class TestMultipleIndex {
     /**
      * 嵌套类型查询查询 格式：sub_docs_json:[{"win_tenderer":"比地1"},{"win_tenderer":"比地2"},{"win_tenderer":"比地3"},{"win_tenderer":"比地4"}]
      *
+     * sub_docs_json.win_tenderer=比地1 比地2 比地3 都能查到此公告
      */
     @Test
     public void testNestedQuery() {
@@ -171,7 +172,48 @@ public class TestMultipleIndex {
         // 需要查询的查询
         TermQuery termQuery = new TermQuery(); // 构造NestedQuery的子查询
         termQuery.setFieldName("sub_docs_json.win_tenderer"); // 设置字段名，注意带有Nested列的前缀
-        termQuery.setTerm(ColumnValue.fromString("比地2")); // 设置要查询的值
+        termQuery.setTerm(ColumnValue.fromString("比地1")); // 设置要查询的值
+        query.setQuery(termQuery);
+        query.setScoreMode(ScoreMode.None);
+
+        NestedQuery query2 = new NestedQuery();
+
+        // 配置嵌套字段
+        query2.setPath("sub_docs_json");
+
+        // 需要查询的查询
+        TermQuery termQuery2 = new TermQuery(); // 构造NestedQuery的子查询
+        termQuery2.setFieldName("sub_docs_json.second_tenderer"); // 设置字段名，注意带有Nested列的前缀
+        termQuery2.setTerm(ColumnValue.fromString("比地1")); // 设置要查询的值
+        query2.setQuery(termQuery2);
+        query2.setScoreMode(ScoreMode.None);
+
+
+        SearchQuery searchQuery = new SearchQuery();
+        BoolQuery boolQuery = new BoolQuery();
+        boolQuery.setShouldQueries(Arrays.asList(query, query2));
+        searchQuery.setQuery(boolQuery);
+
+        // 排序 publishtime asc,docid asc
+        searchQuery.setSort(new Sort(Arrays.asList(
+                new FieldSort("publishtime", SortOrder.ASC),
+                new FieldSort("docid", SortOrder.DESC))));
+
+        Page<Document> page = TableStoreMultipleIndexUtils.search(searchQuery, Document.class);
+        print(page);
+    }
+
+    @Test
+    public void testNestedQuery2() {
+        NestedQuery query = new NestedQuery();
+
+        // 配置嵌套字段
+        query.setPath("sub_docs_json");
+
+        // 需要查询的查询
+        TermQuery termQuery = new TermQuery(); // 构造NestedQuery的子查询
+        termQuery.setFieldName("sub_docs_json.win_tenderer"); // 设置字段名，注意带有Nested列的前缀
+        termQuery.setTerm(ColumnValue.fromString("比地1")); // 设置要查询的值
         query.setQuery(termQuery);
         query.setScoreMode(ScoreMode.None);
 

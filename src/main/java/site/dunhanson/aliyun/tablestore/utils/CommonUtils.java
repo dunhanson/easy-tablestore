@@ -153,7 +153,11 @@ public class CommonUtils {
             if (value != null && field != null) {
 //                if ("List".equals(field.getType().getSimpleName())) {  // 因为现在嵌套的只有json数组类型
                 if (value.toString().matches("^\\[.*\\]$")) {  // 因为现在嵌套的只有json数组类型
-                    obj.put(name, JSON.parseArray(value.toString()));
+                   try {
+                       obj.put(name, JSON.parseArray(value.toString()));
+                   }catch (Exception e){
+                       obj.put(name, value);    // 其他的 [XXX] 排除掉
+                   }
                 } else {
                     obj.put(name, value);
                 }

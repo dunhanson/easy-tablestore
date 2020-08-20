@@ -3,9 +3,11 @@ package site.dunhanson.aliyun.tablestore.test;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.Test;
 import site.dunhanson.aliyun.tablestore.entity.bidi.DocumentExtract;
+import site.dunhanson.aliyun.tablestore.entity.bidi.DocumentTemp;
 import site.dunhanson.aliyun.tablestore.entity.bidi.enterprise.*;
 import site.dunhanson.aliyun.tablestore.utils.TableStoreUtils;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -15,68 +17,43 @@ public class UpdateTest {
 
 
     /**
+     * 创建 Enterprise 对象
+     * @return
+     * @throws Exception
+     */
+    private Enterprise buildTemp() throws Exception {
+        Enterprise temp = new Enterprise();
+        Field[] fields = temp.getClass().getDeclaredFields();
+
+        for (int i = 0; i < fields.length; i++) {
+            Field field = fields[i];
+            field.setAccessible(true);
+           if (field.getType().getSimpleName().equals("String")) {
+                field.set(temp, field.getName());
+            } else if (field.getType().getSimpleName().equals("Integer")) {
+                field.set(temp, Integer.valueOf(i));
+            } else if (field.getType().getSimpleName().equals("Long")) {
+                field.set(temp, Long.valueOf(i));
+            }
+        }
+        return temp;
+    }
+
+
+    /**
      * 测试获取一行记录
      */
     @Test
-    public void testGet() {
-        Enterprise enterprise = new Enterprise();
+    public void testGet() throws Exception {
+        Enterprise enterprise = buildTemp();
         enterprise.setName("testEnterprise");
-        enterprise.setBidiId(1314520L);
+        enterprise.setNicknames("testEnterprise");
         enterprise.setArea("华南");
-        enterprise.setBidNumber(10);
-
-        // 1、主要人员（里面的 List<String>）
-        List<EnterpriseProfilePrimaryStaffItem> staffs = new ArrayList<>();
-        EnterpriseProfilePrimaryStaffItem enterpriseProfilePrimaryStaffItem1 = new EnterpriseProfilePrimaryStaffItem();
-        enterpriseProfilePrimaryStaffItem1.setName("staff1");
-        enterpriseProfilePrimaryStaffItem1.setTycPersonId(1L);
-        enterpriseProfilePrimaryStaffItem1.setTypeJoin(Arrays.asList("a","b"));
-        staffs.add(enterpriseProfilePrimaryStaffItem1);
-        EnterpriseProfilePrimaryStaffItem enterpriseProfilePrimaryStaffItem2 = new EnterpriseProfilePrimaryStaffItem();
-        enterpriseProfilePrimaryStaffItem2.setName("staff2");
-        enterpriseProfilePrimaryStaffItem2.setTycPersonId(2L);
-        enterpriseProfilePrimaryStaffItem2.setTypeJoin(Arrays.asList("c","d"));
-        staffs.add(enterpriseProfilePrimaryStaffItem2);
-        enterprise.setStaffs(staffs);
-
-        // 2、法院公告（里面的announce_id List<CompanyList>）
-        List<EnterpriseProfileCourtAnnouncementItem> courtAnnouncement = new ArrayList<>();
-        EnterpriseProfileCourtAnnouncementItem enterpriseProfileCourtAnnouncementItem1 = new EnterpriseProfileCourtAnnouncementItem();
-        enterpriseProfileCourtAnnouncementItem1.setBltnno("bltnno1");
-        enterpriseProfileCourtAnnouncementItem1.setAnnounce_id(19L);
-
-        List<CompanyList> companyList = new ArrayList<>();
-        CompanyList companyList1 = new CompanyList();
-        companyList1.setName("name1");
-        companyList.add(companyList1);
-        CompanyList companyList2 = new CompanyList();
-        companyList2.setName("name2");
-        companyList.add(companyList2);
-        enterpriseProfileCourtAnnouncementItem1.setCompanyList(companyList);
-        courtAnnouncement.add(enterpriseProfileCourtAnnouncementItem1);
-        enterprise.setCourtAnnouncement(courtAnnouncement);
-
-        // 3、动产抵押（里面的 BaseInfo）
-        List<EnterpriseProfileMortgageInfoItem> mortgageInfo = new ArrayList<>();
-        EnterpriseProfileMortgageInfoItem enterpriseProfileMortgageInfoItem = new EnterpriseProfileMortgageInfoItem();
-        BaseInfo baseInfo = new BaseInfo();
-        baseInfo.setBase("base");
-        baseInfo.setCancelDate(12L);
-        baseInfo.setRegDepartment("regDepartment");
-        enterpriseProfileMortgageInfoItem.setBaseInfo(baseInfo);
-        mortgageInfo.add(enterpriseProfileMortgageInfoItem);
-        enterprise.setMortgageInfo(mortgageInfo);
+        enterprise.setProvince("广东");
+        enterprise.setCity("深圳");
+        enterprise.setBidiId(1314520L);
 
         TableStoreUtils.insert(enterprise);
-
-        List<String> columnsToGet = new ArrayList<>();
-
-        columnsToGet.add("area");
-        columnsToGet.add("court_announcement");
-
-
-        Enterprise enterprise1 = TableStoreUtils.get(enterprise, Enterprise.class, columnsToGet);
-        System.out.println(enterprise1);
     }
 
     /**

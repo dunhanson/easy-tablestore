@@ -14,6 +14,8 @@ import java.util.List;
 public class Enterprise {
     /*企业名称*/
     private String name;
+    /*企业别名的集合使用英文的逗号分隔*/
+    private String nicknames;
     /*比地ID（各个数据库的关联）*/
     private Long bidiId;
     /*区域*/
