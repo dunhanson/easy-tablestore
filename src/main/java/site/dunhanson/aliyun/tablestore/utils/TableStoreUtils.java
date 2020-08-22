@@ -572,4 +572,82 @@ public class TableStoreUtils {
         return result;
     }
 
+
+    /**
+     * 根据二级索引合计（ps：只支持一个，即第一个不为空的二级索引）
+     * 因为其他字段没有，所以反查主表
+     * @param entity            实体类对象实例
+     * @param clazz             实体类
+     * @param <T>
+     * @return
+     */
+    public static <T> int countBysecondaryIndex(T entity,  Class<T> clazz) {
+        int num = 0;    // 测试用的
+        // 获取表的配置信息
+        TableInfo tableInfo = CommonUtils.getTableInfo(clazz);
+        SyncClient client = Store.getInstance().getSyncClient();
+        JSONObject jsonObject = (JSONObject) JSON.toJSON(entity);
+
+
+        // 1、设置起始主键/结束主键
+        PrimaryKeyBuilder startPrimaryKeyBuilder = PrimaryKeyBuilder.createPrimaryKeyBuilder();
+        PrimaryKeyBuilder endPrimaryKeyBuilder = PrimaryKeyBuilder.createPrimaryKeyBuilder();
+
+        // 1.1、设置二级索引表PK（查询时 二级索引表的PK要放在主表之前，要不然会报错）
+        RangeRowQueryCriteria rangeRowQueryCriteria = null;
+        List<String> secondaryIndexList = tableInfo.getSecondaryIndex();
+        String secondaryIndexName = "";     // 当前需要查询的二级索引
+        for (String secondaryIndex : secondaryIndexList) {
+            String key = secondaryIndex.replace(tableInfo.getTableName() + "_index2_", "");
+            Object value = jsonObject.get(CommonUtils.underlineToHump(key));
+            if (value != null) {
+                if (value.getClass().getSimpleName().equals("Long")) {
+                    startPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromLong((Long) value)); // 索引表PK最小值。
+                    endPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromLong((Long) value)); // 索引表PK最大值。
+                } else {
+                    startPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromString((String) value)); // 索引表PK最小值。
+                    endPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromString((String) value)); // 索引表PK最大值。
+                }
+                rangeRowQueryCriteria = new RangeRowQueryCriteria(secondaryIndex);
+                secondaryIndexName = key;
+                break;
+            }
+        }
+
+        // 1.2、设置主表PK（任意范围）
+        List<String> primaryKeyList = tableInfo.getPrimaryKey();
+        for (String key : primaryKeyList) {
+            if (!key.equals(secondaryIndexName)) {  // 排除当前正在查询的二级索引
+                startPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.INF_MIN); // 主表PK最小值。
+                endPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.INF_MAX); // 主表PK最大值。
+            }
+        }
+
+        // 2、查询
+        if (rangeRowQueryCriteria != null) {
+            rangeRowQueryCriteria.setInclusiveStartPrimaryKey(startPrimaryKeyBuilder.build());  // 开始主键
+            rangeRowQueryCriteria.setExclusiveEndPrimaryKey(endPrimaryKeyBuilder.build());      // 结束主键
+            rangeRowQueryCriteria.setMaxVersions(1);                                            // 设置读取最新版本
+
+            // 2.1、循环扫描（因为数据是分区的，所以需要分区扫描）
+            boolean completed = false;
+            long index = 0;
+            while (true) {
+                log.warn("第{}获取，准备获取数量={}", ++index, rangeRowQueryCriteria.getLimit());
+                GetRangeResponse getRangeResponse = client.getRange(new GetRangeRequest(rangeRowQueryCriteria));
+                List<Row> rows = getRangeResponse.getRows();
+                num += rows.size();
+                log.warn("第{}获取，成功获取的数量={},num={}", index, rows.size(),num);
+
+                // 若nextStartPrimaryKey不为null，则继续读取。
+                if (getRangeResponse.getNextStartPrimaryKey() != null && !completed) {
+                    rangeRowQueryCriteria.setInclusiveStartPrimaryKey(getRangeResponse.getNextStartPrimaryKey());
+                } else {
+                    break;
+                }
+            }
+        }
+        return num;
+    }
+
 }

@@ -74,20 +74,10 @@ public class UpdateTest {
      */
     @Test
     public void testInsert() {
-        Enterprise enterprise = new Enterprise();
-        enterprise.setBidiId(1314L);
-        enterprise.setProvince("广东d2");
-
-
-        // 更新招投标数量
-        enterprise.setBidNumber(40);
-        enterprise.setZhaoBiaoNumber(10);
-        enterprise.setDaiLiNumber(10);
-        enterprise.setZhongBiaoNumber(10);
-        enterprise.setTouBiaoNumber(10);
-
-        int num = TableStoreUtils.insert(enterprise);
-        log.debug("影响行数={}", num);
+        DocumentExtract extract = new DocumentExtract();
+        extract.setStatus(-2L);
+        int num = TableStoreUtils.countBysecondaryIndex(extract, DocumentExtract.class);
+        log.warn("影响行数={}", num);
     }
 
 }
