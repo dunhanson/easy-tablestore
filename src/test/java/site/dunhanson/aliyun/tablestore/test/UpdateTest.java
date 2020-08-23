@@ -48,10 +48,16 @@ public class UpdateTest {
         Enterprise enterprise = buildTemp();
         enterprise.setName("testEnterprise");
         enterprise.setNicknames("testEnterprise");
-        enterprise.setArea("华南");
+        enterprise.setArea("华南12");
         enterprise.setProvince("广东");
         enterprise.setCity("深圳");
         enterprise.setBidiId(1314520L);
+
+        List<EnterpriseProfileCreditChinaRedRecordItem> creditRedRecord = new ArrayList<>();
+        EnterpriseProfileCreditChinaRedRecordItem item = new EnterpriseProfileCreditChinaRedRecordItem();
+        item.setDocName("docName");
+        creditRedRecord.add(item);
+        enterprise.setCreditRedRecord(creditRedRecord);
 
         TableStoreUtils.insert(enterprise);
     }

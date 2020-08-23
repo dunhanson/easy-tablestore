@@ -167,6 +167,9 @@ public class TableStoreUtils {
                     SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                     String format = sdf.format(value);
                     rowUpdateChange.put(new Column(key, ColumnValue.fromString(format)));
+                } else if (value.toString().matches("^\\[.*\\]$")) { // json数组，ots只支持json数组的嵌套数据类型，需要把驼峰法转成下划线再入库
+                    String text = JSON.toJSONString(value, serializeConfig);
+                    rowUpdateChange.put(new Column(key, ColumnValue.fromString(text)));
                 }
             }
         }
