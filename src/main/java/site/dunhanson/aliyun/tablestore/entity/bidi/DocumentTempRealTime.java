@@ -20,7 +20,7 @@ public class DocumentTempRealTime {
     private Long docid;
 
     /*状态(1=待要素 -1=正在要素提取 -2=要素提取失败 要素提取成功会删除)*/
-    private Integer status = 1;
+    private Long status = 1L;
 
     /**
      * 公告类型

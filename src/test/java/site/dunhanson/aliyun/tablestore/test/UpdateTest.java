@@ -193,7 +193,7 @@ public class UpdateTest {
         for (Document doc : list) {
             try {
                 DocumentTempRealTime realTime = new DocumentTempRealTime();
-                realTime.setStatus(1);
+                realTime.setStatus(1L);
                 copy(doc, realTime);
                 TableStoreUtils.insert(realTime);
                 num ++;
