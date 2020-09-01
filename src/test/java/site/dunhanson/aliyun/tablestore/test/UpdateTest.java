@@ -1,16 +1,27 @@
 package site.dunhanson.aliyun.tablestore.test;
 
+import com.alicloud.openservices.tablestore.model.ColumnValue;
+import com.alicloud.openservices.tablestore.model.search.SearchQuery;
+import com.alicloud.openservices.tablestore.model.search.query.BoolQuery;
+import com.alicloud.openservices.tablestore.model.search.query.RangeQuery;
+import com.alicloud.openservices.tablestore.model.search.query.TermQuery;
+import com.alicloud.openservices.tablestore.model.search.query.TermsQuery;
+import com.alicloud.openservices.tablestore.model.search.sort.FieldSort;
+import com.alicloud.openservices.tablestore.model.search.sort.Sort;
+import com.alicloud.openservices.tablestore.model.search.sort.SortOrder;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.Test;
+import site.dunhanson.aliyun.tablestore.entity.Page;
+import site.dunhanson.aliyun.tablestore.entity.bidi.Document;
 import site.dunhanson.aliyun.tablestore.entity.bidi.DocumentExtract;
 import site.dunhanson.aliyun.tablestore.entity.bidi.DocumentTemp;
+import site.dunhanson.aliyun.tablestore.entity.bidi.DocumentTempRealTime;
 import site.dunhanson.aliyun.tablestore.entity.bidi.enterprise.*;
+import site.dunhanson.aliyun.tablestore.utils.TableStoreMultipleIndexUtils;
 import site.dunhanson.aliyun.tablestore.utils.TableStoreUtils;
 
 import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 @Slf4j
 public class UpdateTest {
@@ -45,21 +56,10 @@ public class UpdateTest {
      */
     @Test
     public void testGet() throws Exception {
-        Enterprise enterprise = buildTemp();
-        enterprise.setName("testEnterprise");
-        enterprise.setNicknames("testEnterprise");
-        enterprise.setArea("华南12");
-        enterprise.setProvince("广东");
-        enterprise.setCity("深圳");
-        enterprise.setBidiId(1314520L);
-
-        List<EnterpriseProfileCreditChinaRedRecordItem> creditRedRecord = new ArrayList<>();
-        EnterpriseProfileCreditChinaRedRecordItem item = new EnterpriseProfileCreditChinaRedRecordItem();
-        item.setDocName("docName");
-        creditRedRecord.add(item);
-        enterprise.setCreditRedRecord(creditRedRecord);
-
-        TableStoreUtils.insert(enterprise);
+        Enterprise enterprise = new Enterprise();
+        enterprise.setName("深圳市国际招标有限公司");
+        enterprise = TableStoreUtils.get(enterprise, Enterprise.class);
+        System.out.println(enterprise);
     }
 
     /**
@@ -79,11 +79,158 @@ public class UpdateTest {
      * 测试新增
      */
     @Test
-    public void testInsert() {
-        DocumentExtract extract = new DocumentExtract();
-        extract.setStatus(-2L);
-        int num = TableStoreUtils.countBysecondaryIndex(extract, DocumentExtract.class);
-        log.warn("影响行数={}", num);
+    public void testInsert() throws Exception {
+        Enterprise enterprise = buildTemp();
+        enterprise.setName("testEnterprise");
+        enterprise.setNicknames("testEnterprise");
+        enterprise.setArea("华南12");
+        enterprise.setProvince("广东");
+        enterprise.setCity("深圳");
+        enterprise.setBidiId(1314520L);
+
+        List<EnterpriseProfileCreditChinaRedRecordItem> creditRedRecord = new ArrayList<>();
+        EnterpriseProfileCreditChinaRedRecordItem item = new EnterpriseProfileCreditChinaRedRecordItem();
+        item.setDocName("docName");
+        creditRedRecord.add(item);
+        enterprise.setCreditRedRecord(creditRedRecord);
+
+        TableStoreUtils.insert(enterprise);
+    }
+
+
+
+    @Test
+    public void te2() {
+
+        List<String> list = new LinkedList<>();
+        list.add("a");
+        list.add("b");
+
+        System.out.println(list.get(list.size() - 1));
+        System.out.println(list.get(list.size()));
+
+    }
+
+    @Test
+    public void te() {
+        Long maxDocid = 0L;
+        for (int i = 1; i < 1500; i++) {
+            SearchQuery query = new SearchQuery();
+            BoolQuery boolQuery = new BoolQuery();
+
+            // 1、docid > maxDocid
+            RangeQuery rangeQuery1 = new RangeQuery();
+            rangeQuery1.setFieldName("docid");
+            rangeQuery1.greaterThan(ColumnValue.fromLong(maxDocid));
+
+
+            // 2、docchannel=100
+            TermQuery termQuery = new TermQuery();
+            termQuery.setFieldName("docchannel");
+            termQuery.setTerm(ColumnValue.fromLong(100));
+            boolQuery.setMustQueries(new ArrayList<>(Arrays.asList(rangeQuery1, termQuery)));
+
+            query.setQuery(boolQuery);
+            query.setLimit(0);
+            query.setLimit(100);
+            query.setSort(new Sort(Arrays.asList(new FieldSort("docid", SortOrder.ASC))));
+
+            Page<Document> page = TableStoreMultipleIndexUtils.search(query, Document.class, new ArrayList<>(Arrays.asList("docchannel")));
+            List<Document> docs = page.getList();
+            if (docs != null && docs.size() > 0) {
+                List<DocumentTemp> temps = new LinkedList<>();
+                for (Document doc : docs) {
+                    DocumentTemp temp = new DocumentTemp();
+                    temp.setPageTime(doc.getPageTime());
+                    temp.setDocid(doc.getDocid());
+                    temps.add(temp);
+                }
+                maxDocid = docs.get(docs.size() - 1).getDocid();
+                List<DocumentTemp> documentTemps = TableStoreUtils.batchGetRow(temps, DocumentTemp.class);
+                Map<Long, DocumentTemp> map = new HashMap<>();
+                for (DocumentTemp temp : documentTemps) {
+                    map.put(temp.getDocid(), temp);
+                }
+
+
+                // 更新
+                List<Document> updates = new LinkedList<>();
+                for (Document doc : docs) {
+                    DocumentTemp temp = map.get(doc.getDocid());
+                    if (temp != null) {
+                        Long docchannel = temp.getDocchannel();
+                        if (docchannel != null && docchannel != 100L) {
+                            doc.setDocchannel(docchannel);
+                            updates.add(doc);
+                        }
+                    }
+                }
+                int updateSum = TableStoreUtils.batchUpdate(updates);
+                System.out.println(updateSum);
+            }
+        }
+    }
+
+
+    /**
+     * 同步数据到 DocumentTempRealTime 表
+     */
+    @Test
+    public void tempToTempRealTime() {
+
+        TermsQuery query = new TermsQuery();
+        query.setFieldName("docchannel");
+        query.addTerm(ColumnValue.fromLong(51));
+        query.addTerm(ColumnValue.fromLong(101));
+
+        SearchQuery searchQuery = new SearchQuery();
+        searchQuery.setQuery(query);
+        searchQuery.setLimit(100);
+        Page<Document> page = TableStoreMultipleIndexUtils.search(searchQuery, Document.class);
+        List<Document> list = page.getList();
+
+        int num = 0;
+        for (Document doc : list) {
+            try {
+                DocumentTempRealTime realTime = new DocumentTempRealTime();
+                copy(doc, realTime);
+                TableStoreUtils.insert(realTime);
+                num ++;
+            }catch(Exception e){
+                e.printStackTrace();
+            }
+        }
+        log.warn("成功同步={}", num);
+    }
+
+
+
+    /**
+     * 把 from 的同名的属性值覆盖到 to
+     * @param from
+     * @param to
+     * @throws IllegalAccessException
+     */
+    public static void copy(Object from, Object to) throws IllegalAccessException {
+        if (from != null && to != null) {
+            Field[] inputFields = from.getClass().getDeclaredFields();
+            Field[] outputFields = to.getClass().getDeclaredFields();
+
+            Map<String, Field> outputMap = new HashMap<>();
+            for (Field field : outputFields) {
+                outputMap.put(field.getName(), field);
+            }
+
+            for (Field inputField : inputFields) {
+                String name = inputField.getName();
+                Field outputField = outputMap.get(name);
+                if (outputField != null) {
+                    inputField.setAccessible(true);
+                    outputField.setAccessible(true);
+                    outputField.set(to, inputField.get(from));
+                }
+            }
+        }
     }
 
 }

@@ -3,10 +3,10 @@ package site.dunhanson.aliyun.tablestore.entity.bidi;
 import lombok.Data;
 
 /**
- * document_temp 表的实体
+ * document_temp_real_time 表的实体（爬虫公告数据接入表（实时））
  */
 @Data
-public class DocumentTemp {
+public class DocumentTempRealTime {
 
     // 33
     /**
