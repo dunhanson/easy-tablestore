@@ -8,7 +8,7 @@ import lombok.Data;
 @Data
 public class DocumentTempRealTime {
 
-    // 33
+    // 33 + 1
     /**
      * 页面时间
      */
@@ -178,5 +178,10 @@ public class DocumentTempRealTime {
      * 资质范围
      */
     private String qrange;
+
+    /**
+     * 是否废标（为中标公告此属性才有意义 为 "true" 说明是废标）
+     */
+    private String abandonedTender;
 
 }
