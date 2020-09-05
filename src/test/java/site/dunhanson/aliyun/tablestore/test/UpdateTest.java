@@ -180,12 +180,12 @@ public class UpdateTest {
 
         TermsQuery query = new TermsQuery();
         query.setFieldName("docchannel");
-        query.addTerm(ColumnValue.fromLong(51));
+        query.addTerm(ColumnValue.fromLong(52));
         query.addTerm(ColumnValue.fromLong(101));
 
         SearchQuery searchQuery = new SearchQuery();
         searchQuery.setQuery(query);
-        searchQuery.setLimit(100);
+        searchQuery.setLimit(50);
         Page<Document> page = TableStoreMultipleIndexUtils.search(searchQuery, Document.class);
         List<Document> list = page.getList();
 

@@ -1,7 +1,11 @@
 package site.dunhanson.aliyun.tablestore.test;
 
+import com.alicloud.openservices.tablestore.SyncClient;
 import com.alicloud.openservices.tablestore.model.ColumnValue;
+import com.alicloud.openservices.tablestore.model.Row;
 import com.alicloud.openservices.tablestore.model.search.SearchQuery;
+import com.alicloud.openservices.tablestore.model.search.SearchRequest;
+import com.alicloud.openservices.tablestore.model.search.SearchResponse;
 import com.alicloud.openservices.tablestore.model.search.query.*;
 import com.alicloud.openservices.tablestore.model.search.sort.FieldSort;
 import com.alicloud.openservices.tablestore.model.search.sort.Sort;
@@ -10,6 +14,7 @@ import lombok.extern.log4j.Log4j;
 import org.junit.Test;
 import site.dunhanson.aliyun.tablestore.entity.bidi.Document;
 import site.dunhanson.aliyun.tablestore.entity.Page;
+import site.dunhanson.aliyun.tablestore.utils.Store;
 import site.dunhanson.aliyun.tablestore.utils.TableStoreMultipleIndexUtils;
 import site.dunhanson.aliyun.tablestore.utils.TableStoreUtils;
 
@@ -21,6 +26,36 @@ import java.util.*;
 @Log4j
 public class TestMultipleIndex {
 
+
+    @Test
+    public void termQuery() {
+        SearchQuery searchQuery = new SearchQuery();
+        TermQuery termQuery = new TermQuery(); // 设置查询类型为TermQuery
+        termQuery.setFieldName("docchannel"); // 设置要匹配的字段
+        termQuery.setTerm(ColumnValue.fromLong(52L)); // 设置要匹配的值
+        searchQuery.setQuery(termQuery);
+        SearchRequest searchRequest = new SearchRequest("document", "document_index", searchQuery);
+
+        SearchRequest.ColumnsToGet columnsToGet = new SearchRequest.ColumnsToGet();
+        columnsToGet.setReturnAll(true); // 设置返回所有列
+        searchRequest.setColumnsToGet(columnsToGet);
+
+        SyncClient client = Store.getInstance().getSyncClient();
+        SearchResponse resp = client.search(searchRequest);
+
+        // 可检查NextToken是否为空，若不为空，可通过NextToken继续读取。（不知道什么原因???）
+        List<Row> rows = resp.getRows();
+        while(resp.getNextToken() != null){
+            //把token设置到下一次请求中
+            searchRequest.getSearchQuery().setToken(resp.getNextToken());
+            resp = client.search(searchRequest);
+            if (!resp.isAllSuccess()){
+                throw new RuntimeException("not all success");
+            }
+            rows.addAll(resp.getRows());
+        }
+        System.out.println("RowSize:" + rows.size());
+    }
 
     /**
      * 精准查询（用于 字符串类型）

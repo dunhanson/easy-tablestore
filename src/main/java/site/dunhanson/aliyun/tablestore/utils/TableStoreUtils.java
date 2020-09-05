@@ -562,7 +562,7 @@ public class TableStoreUtils {
                     }
                 }
 
-                // 若nextStartPrimaryKey不为null，则继续读取。
+                // 若nextStartPrimaryKey不为null,可能扫描到分表的末尾了，则继续读取。
                 if (getRangeResponse.getNextStartPrimaryKey() != null && !completed) {
                     rangeRowQueryCriteria.setInclusiveStartPrimaryKey(getRangeResponse.getNextStartPrimaryKey());
                 } else {

@@ -177,6 +177,11 @@ public class Document {
      */
     private String qrange;
 
+    /**
+     * 数据状态 1代表待要素提取 2代表已在maxCompute做完要素提取 3代表成品数据
+     */
+    private Long status;
+
 
 
     // 提取出的 11 + 1
