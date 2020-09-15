@@ -291,7 +291,21 @@ public class CommonUtils {
     }
 
 
-
+    /**
+     * 获取指定区间的随机数（默认是[1,50]）
+     * @param start  开始值（包含）
+     * @param end    结束值（包含）
+     * @return
+     */
+    public static int getRandomNumber(int start, int end) {
+        if (start < 0 || end < 0 || start > end) {
+            start = 1;
+            end = 50;
+        }
+        java.util.Random random = new java.util.Random();
+        int randNumber = random.nextInt(end - start + 1) + start;
+        return randNumber;
+    }
 
 
 }

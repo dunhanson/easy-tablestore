@@ -101,14 +101,13 @@ public class UpdateTest {
 
     @Test
     public void te2() {
+        DocumentExtract doc = new DocumentExtract();
+        doc.setStatus(1L);
+        List<DocumentExtract> docs = TableStoreUtils.getRangeBysecondaryIndex(doc, 1L, 10L, DocumentExtract.class, Arrays.asList("extract_json"), 100);
+        System.out.println(docs);
 
-        List<String> list = new LinkedList<>();
-        list.add("a");
-        list.add("b");
-
-        System.out.println(list.get(list.size() - 1));
-        System.out.println(list.get(list.size()));
-
+//        int num = TableStoreUtils.countBysecondaryIndex(doc, 1L, 10L, Document.class);
+//        System.out.println("[1,100]="+num);
     }
 
     @Test
