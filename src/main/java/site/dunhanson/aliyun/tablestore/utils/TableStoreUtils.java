@@ -178,6 +178,59 @@ public class TableStoreUtils {
         return rowUpdateChange;
     }
 
+
+    /**
+     * 获取 {@link RowPutChange}  行的新增对象
+     * @param obj            实体类对象实例
+     * @param tableInfo    {@link TableInfo}
+     * @return
+     */
+    private static RowPutChange getRowPutChange(Object obj, TableInfo tableInfo) {
+        JSONObject jsonObject = (JSONObject) JSON.toJSON(obj);
+
+        // 1、构造主键
+        PrimaryKeyBuilder primaryKeyBuilder = PrimaryKeyBuilder.createPrimaryKeyBuilder();
+        List<String> primaryKeyList = tableInfo.getPrimaryKey();
+        for (String key : primaryKeyList) {
+            Object value = jsonObject.get(CommonUtils.underlineToHump(key));
+            if (value.getClass().getSimpleName().equals("Long")) {
+                primaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromLong((Long) value));
+            } else {
+                primaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromString((String) value));
+            }
+        }
+        PrimaryKey primaryKey = primaryKeyBuilder.build();
+
+        // 2、设置其他属性
+        RowPutChange rowPutChange = new RowPutChange(tableInfo.getTableName(), primaryKey);
+        for (Map.Entry<String, Object> map : jsonObject.entrySet()) {
+            String key = map.getKey();
+            Object value = map.getValue();
+            key = CommonUtils.humpToUnderline(key);     // 驼峰转下划线
+            if (!primaryKeyList.contains(key) && value != null) {       // 非主键 非空 判断
+                if (value.getClass().getSimpleName().equals("String")) {      // 待完善 其他类型当成字符串处理，目前是够用的
+                    rowPutChange.addColumn(new Column(key, ColumnValue.fromString((String) value)));
+                } else if (value.getClass().getSimpleName().equals("Integer")) {
+                    rowPutChange.addColumn(new Column(key, ColumnValue.fromLong((Integer) value)));
+                } else if (value.getClass().getSimpleName().equals("Long")) {      // 待完善 其他类型当成字符串处理，目前是够用的
+                    rowPutChange.addColumn(new Column(key, ColumnValue.fromLong((Long) value)));
+                } else if (value.getClass().getSimpleName().equals("Double")) {
+                    rowPutChange.addColumn(new Column(key, ColumnValue.fromDouble(Double.valueOf(value.toString()))));
+                } else if (value.getClass().getSimpleName().equals("Boolean")) {
+                    rowPutChange.addColumn(new Column(key, ColumnValue.fromBoolean(Boolean.valueOf(value.toString()))));
+                } else if (value.getClass().getSimpleName().equals("Date"))  {
+                    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                    String format = sdf.format(value);
+                    rowPutChange.addColumn(new Column(key, ColumnValue.fromString(format)));
+                } else if (value.toString().matches("^\\[.*\\]$")) { // json数组，ots只支持json数组的嵌套数据类型，需要把驼峰法转成下划线再入库
+                    String text = JSON.toJSONString(value, serializeConfig);
+                    rowPutChange.addColumn(new Column(key, ColumnValue.fromString(text)));
+                }
+            }
+        }
+        return rowPutChange;
+    }
+
     /**
      * 获取 {@link RowDeleteChange}  行的删除对象
      * @param obj           实体类对象实例
@@ -205,6 +258,22 @@ public class TableStoreUtils {
     }
 
     /**
+     * 批量新增
+     * @param list  实体类对象实例集合
+     * @return
+     */
+    public static int batchInsert(List list) {
+        int num = 0;
+        if (list != null) {
+            List<List> batches = Lists.partition(list, 200);
+            for (List batch : batches) {
+                num += batchWriteFor200(batch, false);
+            }
+        }
+        return num;
+    }
+
+    /**
      * 根据主键批量更新
      * @param list  实体类对象实例集合
      * @return
@@ -214,7 +283,7 @@ public class TableStoreUtils {
         if (list != null) {
             List<List> batches = Lists.partition(list, 200);
             for (List batch : batches) {
-                num += batchUpdateFor200(batch);
+                num += batchWriteFor200(batch, true);
             }
         }
         return num;
@@ -222,10 +291,11 @@ public class TableStoreUtils {
 
     /**
      * 批量更新不为空的字段（ps：一次不能超过200）
-     * @param list  实体类对象实例集合
+     * @param list    实体类对象实例集合
+     * @param update  是否为更新操作，否则为新增操作
      * @return
      */
-    private static int batchUpdateFor200(List list) {
+    private static int batchWriteFor200(List list, boolean update) {
         int num = 0;
         if (list != null && list.size() > 0) {
             // 获取表的配置信息
@@ -235,8 +305,13 @@ public class TableStoreUtils {
             // 1、构建的对象
             BatchWriteRowRequest batchWriteRowRequest = new BatchWriteRowRequest();
             for (Object obj : list) {
-                RowUpdateChange rowUpdateChange = getRowUpdateChange(obj, basicInfo);
-                batchWriteRowRequest.addRowChange(rowUpdateChange);
+                RowChange rowChange = null;
+                if (update) {
+                    rowChange = getRowUpdateChange(obj, basicInfo);
+                } else {
+                    rowChange = getRowPutChange(obj, basicInfo);
+                }
+                batchWriteRowRequest.addRowChange(rowChange);
             }
 
             // 2、更新

@@ -54,4 +54,8 @@ public class Store {
         return syncClient;
     }
 
+    public ConnectInfo getConnectInfo() {
+        return connectInfo;
+    }
+
 }
