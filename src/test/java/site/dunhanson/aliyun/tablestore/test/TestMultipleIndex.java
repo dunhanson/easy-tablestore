@@ -14,6 +14,7 @@ import lombok.extern.log4j.Log4j;
 import org.junit.Test;
 import site.dunhanson.aliyun.tablestore.entity.bidi.Document;
 import site.dunhanson.aliyun.tablestore.entity.Page;
+import site.dunhanson.aliyun.tablestore.entity.bidi.DocumentExtract;
 import site.dunhanson.aliyun.tablestore.utils.Store;
 import site.dunhanson.aliyun.tablestore.utils.TableStoreMultipleIndexUtils;
 import site.dunhanson.aliyun.tablestore.utils.TableStoreUtils;
@@ -25,6 +26,46 @@ import java.util.*;
  */
 @Log4j
 public class TestMultipleIndex {
+
+    @Test
+    public void te() {
+
+
+//        RangeQuery rangeQuery = new RangeQuery();
+//        rangeQuery.setFieldName("docid");
+//        rangeQuery.setFrom(ColumnValue.fromLong(1L), true);
+//        rangeQuery.setTo(ColumnValue.fromLong(1000L), true);
+//
+//        SearchQuery searchQuery = new SearchQuery();
+//        searchQuery.setQuery(rangeQuery);
+//        searchQuery.setSort(new Sort(Arrays.asList(new FieldSort("docid", SortOrder.ASC))));
+//        searchQuery.setLimit(100);
+//        Page<DocumentExtract> page = TableStoreMultipleIndexUtils.search(searchQuery, DocumentExtract.class, "status");
+//
+//        List<DocumentExtract> list = page.getList();
+//
+//
+//        TableStoreUtils.batchDelete(list);
+//        System.out.println(page.getTotalCount());
+
+
+
+        SearchQuery searchQuery = new SearchQuery();
+        searchQuery.setQuery(new MatchAllQuery());
+        searchQuery.setSort(new Sort(Arrays.asList(new FieldSort("docid", SortOrder.ASC))));
+        searchQuery.setLimit(1);
+        Page<DocumentExtract> page = TableStoreMultipleIndexUtils.search(searchQuery, DocumentExtract.class);
+        System.out.println("min="+page.getList().get(0).getDocid());
+
+
+        SearchQuery searchQuery2 = new SearchQuery();
+        searchQuery2.setQuery(new MatchAllQuery());
+        searchQuery2.setSort(new Sort(Arrays.asList(new FieldSort("docid", SortOrder.DESC))));
+        searchQuery2.setLimit(1);
+        Page<DocumentExtract> page2 = TableStoreMultipleIndexUtils.search(searchQuery2, DocumentExtract.class);
+        System.out.println("max="+page2.getList().get(0).getDocid());
+
+    }
 
 
     @Test

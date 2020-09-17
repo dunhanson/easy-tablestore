@@ -7,11 +7,10 @@ import lombok.Data;
 @Data
 public class DocumentExtract {
 
-    // 2+5
     /**
-     * 页面时间
+     * 分区键[1,500]只用于分区
      */
-    private String pageTime;
+    private Long partitionkey;
 
     /**
      * docid
@@ -22,6 +21,11 @@ public class DocumentExtract {
      * 状态
      */
     private Long status;
+
+    /**
+     * 页面时间
+     */
+    private String pageTime;
 
     /**
      * 要素提取返回的json字符串
