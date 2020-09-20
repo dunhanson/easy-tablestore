@@ -9,17 +9,29 @@ import java.util.List;
  */
 @Data
 public class Document {
-
-    // 33
+//    注意：前面3+32=35个字段不能变顺序，如需加字段加在后面
+//    partitionkey,docid,status,page_time,docchannel,doctitle,dochtmlcon,area,province,city,district,
+//    docstatus,doccontent,dockeywords,cruser,crtime,hitscount,opertime,operuser,publishtime,downscount,auditstatus,
+//    auditdesc,audittime,uuid,web_source_no,web_source_name,info_source,info_type,industry,page_attachments,qstatus,qcodes,qtype,qrange
     /**
-     * 页面时间
+     * 分区键[1,500]只用于分区
      */
-    private String pageTime;
+    private Long partitionkey;
 
     /**
      * docid
      */
     private Long docid;
+
+    /**
+     * 数据状态 1代表待要素提取 2代表已在maxCompute做完要素提取 3代表成品数据
+     */
+    private Long status = 1L;
+
+    /**
+     * 页面时间
+     */
+    private String pageTime;
 
     /**
      * 公告类型
@@ -177,10 +189,6 @@ public class Document {
      */
     private String qrange;
 
-    /**
-     * 数据状态 1代表待要素提取 2代表已在maxCompute做完要素提取 3代表成品数据
-     */
-    private Long status = 1L;
 
 
 

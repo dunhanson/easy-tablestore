@@ -15,7 +15,6 @@ import site.dunhanson.aliyun.tablestore.entity.Page;
 import site.dunhanson.aliyun.tablestore.entity.bidi.Document;
 import site.dunhanson.aliyun.tablestore.entity.bidi.DocumentExtract;
 import site.dunhanson.aliyun.tablestore.entity.bidi.DocumentTemp;
-import site.dunhanson.aliyun.tablestore.entity.bidi.DocumentTempRealTime;
 import site.dunhanson.aliyun.tablestore.entity.bidi.enterprise.*;
 import site.dunhanson.aliyun.tablestore.utils.TableStoreMultipleIndexUtils;
 import site.dunhanson.aliyun.tablestore.utils.TableStoreUtils;
@@ -169,40 +168,6 @@ public class UpdateTest {
             }
         }
     }
-
-
-    /**
-     * 同步数据到 DocumentTempRealTime 表
-     */
-    @Test
-    public void tempToTempRealTime() {
-
-        TermsQuery query = new TermsQuery();
-        query.setFieldName("docchannel");
-        query.addTerm(ColumnValue.fromLong(52));
-        query.addTerm(ColumnValue.fromLong(101));
-
-        SearchQuery searchQuery = new SearchQuery();
-        searchQuery.setQuery(query);
-        searchQuery.setLimit(50);
-        Page<Document> page = TableStoreMultipleIndexUtils.search(searchQuery, Document.class);
-        List<Document> list = page.getList();
-
-        int num = 0;
-        for (Document doc : list) {
-            try {
-                DocumentTempRealTime realTime = new DocumentTempRealTime();
-                realTime.setStatus(1L);
-                copy(doc, realTime);
-                TableStoreUtils.insert(realTime);
-                num ++;
-            }catch(Exception e){
-                e.printStackTrace();
-            }
-        }
-        log.warn("成功同步={}", num);
-    }
-
 
 
     /**
