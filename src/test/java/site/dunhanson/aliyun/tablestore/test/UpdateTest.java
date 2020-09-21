@@ -100,13 +100,13 @@ public class UpdateTest {
 
     @Test
     public void te2() {
-        DocumentExtract doc = new DocumentExtract();
+        Document doc = new Document();
         doc.setStatus(1L);
-        List<DocumentExtract> docs = TableStoreUtils.getRangeBysecondaryIndex(doc, 1L, 10L, DocumentExtract.class, Arrays.asList("extract_json"), 100);
-        System.out.println(docs);
+//        List<DocumentExtract> docs = TableStoreUtils.getRangeBysecondaryIndex(doc, 1L, 10L, DocumentExtract.class, Arrays.asList("extract_json"), 100);
+//        System.out.println(docs);
 
-//        int num = TableStoreUtils.countBysecondaryIndex(doc, 1L, 10L, Document.class);
-//        System.out.println("[1,100]="+num);
+        int num = TableStoreUtils.countBysecondaryIndex(doc, 1L, 50L, Document.class);
+        System.out.println("[1,50]的数量="+num);
     }
 
     @Test
