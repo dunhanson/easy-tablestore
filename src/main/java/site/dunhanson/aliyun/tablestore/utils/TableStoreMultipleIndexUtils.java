@@ -187,7 +187,6 @@ public class TableStoreMultipleIndexUtils {
         logStr.append("ElapsedTime：" + ChronoUnit.MILLIS.between(startTime, endTime) + "ms");
         logStr.append("\n");
         logStr.append("---------------------- TableStore Search ----------------------");
-        logStr.append("\n");
         log.info(logStr.toString());
         return page;
     }
@@ -215,6 +214,24 @@ public class TableStoreMultipleIndexUtils {
      * @return
      */
     public static String getQueryString(Query query) {
+        String queryString = formatQueryString(query);
+        if (queryString.split("[(]+").length == 2) { // 有且仅有一个TermsQuery/RangQuery在最里层，0或多个BoolQuery在外层包裹：匹配连续多个(
+            queryString = queryString.replaceAll("[(]+", "").replaceAll("[)]+", "");
+        } else { // BoolQuery在最外层
+            if (queryString.startsWith("(") && queryString.endsWith(")")) {
+                queryString = queryString.substring(1, queryString.length() - 1);
+            }
+        }
+
+        return queryString;
+    }
+
+    /**
+     * 查询字符串
+     * @param query
+     * @return
+     */
+    public static String formatQueryString(Query query) {
         StringBuffer stringBuffer = new StringBuffer();
         if (query instanceof MatchAllQuery) {
             stringBuffer.append("*" + "=" + "*");
@@ -244,23 +261,19 @@ public class TableStoreMultipleIndexUtils {
             String fieldName = temp.getFieldName();
             List<ColumnValue> terms = temp.getTerms();
             if (terms != null && terms.size() > 0) {
-                if (terms.size() == 1) {
+                if (terms.size() > 1) {
+                    stringBuffer.append("(");
+                }
+                for (ColumnValue columnValue : terms) {
                     stringBuffer.append(fieldName);
                     stringBuffer.append("=");
                     stringBuffer.append("\"");
-                    stringBuffer.append(terms.get(0).getValue());
+                    stringBuffer.append(columnValue.getValue());
                     stringBuffer.append("\"");
-                } else {
-                    stringBuffer.append("(");
-                    for (ColumnValue columnValue : terms) {
-                        stringBuffer.append(fieldName);
-                        stringBuffer.append("=");
-                        stringBuffer.append("\"");
-                        stringBuffer.append(columnValue.getValue());
-                        stringBuffer.append("\"");
-                        stringBuffer.append(" OR ");
-                    }
-                    stringBuffer = new StringBuffer(stringBuffer.substring(0, stringBuffer.lastIndexOf(" OR ")));
+                    stringBuffer.append(" OR ");
+                }
+                stringBuffer = new StringBuffer(stringBuffer.substring(0, stringBuffer.lastIndexOf(" OR ")));
+                if (terms.size() > 1) {
                     stringBuffer.append(")");
                 }
             }
@@ -275,6 +288,9 @@ public class TableStoreMultipleIndexUtils {
             RangeQuery temp = (RangeQuery)query;
             Object from = temp.getFrom();
             Object to = temp.getTo();
+            if (from != null && to != null) {
+                stringBuffer.append("(");
+            }
             if (from != null) {
                 stringBuffer.append(temp.getFieldName());
                 stringBuffer.append(">");
@@ -292,6 +308,9 @@ public class TableStoreMultipleIndexUtils {
                 stringBuffer.append(to);
                 stringBuffer.append("\"");
             }
+            if (from != null && to != null) {
+                stringBuffer.append(")");
+            }
         } else if (query instanceof WildcardQuery) {
             WildcardQuery temp = (WildcardQuery)query;
             stringBuffer.append(temp.getFieldName());
@@ -305,72 +324,91 @@ public class TableStoreMultipleIndexUtils {
             List<Query> filterQueries = temp.getFilterQueries();
             List<Query> mustQueries = temp.getMustQueries();
             List<Query> shouldQueries = temp.getShouldQueries();
+            int queryNum = 0;
             if (mustNotQueries != null && mustNotQueries.size() > 0) {
-                stringBuffer.append("!");
-                if (mustNotQueries.size() == 1) {
-                    stringBuffer.append(getQueryString(mustNotQueries.get(0)));
-                } else {
-                    stringBuffer.append("(");
-                    for (Query getQuery : mustNotQueries) {
-                        stringBuffer.append(getQueryString(getQuery));
-                        stringBuffer.append(" AND ");
-                    }
-                    stringBuffer = new StringBuffer(stringBuffer.substring(0, stringBuffer.lastIndexOf(" AND ")));
-                    stringBuffer.append(")");
+                queryNum++;
+            }
+            if (mustQueries != null && mustQueries.size() > 0) {
+                queryNum++;
+            }
+            if (filterQueries != null && filterQueries.size() > 0) {
+                queryNum++;
+            }
+            if (shouldQueries != null && shouldQueries.size() > 0) {
+                queryNum++;
+            }
+            if (queryNum > 1) {
+                stringBuffer.append("(");
+            }
+            if (mustNotQueries != null && mustNotQueries.size() > 0) {
+                if (StringUtils.isNotBlank(stringBuffer.toString()) && !"(".equals(stringBuffer.toString())) {
+                    stringBuffer.append(" AND ");
                 }
+                stringBuffer.append("!");
+                stringBuffer.append("(");
+                for (Query getQuery : mustNotQueries) {
+                    stringBuffer.append(formatQueryString(getQuery));
+                    stringBuffer.append(" AND ");
+                }
+                stringBuffer = new StringBuffer(stringBuffer.substring(0, stringBuffer.lastIndexOf(" AND ")));
+                stringBuffer.append(")");
             }
             if (mustQueries != null && mustQueries.size() > 0) {
                 //多条件-且查询
-                if (StringUtils.isNotBlank(stringBuffer.toString())) {
+                if (StringUtils.isNotBlank(stringBuffer.toString()) && !"(".equals(stringBuffer.toString())) {
                     stringBuffer.append(" AND ");
                 }
-                if (mustQueries.size() == 1) {
-                    stringBuffer.append(getQueryString(mustQueries.get(0)));
-                } else {
+                if (mustQueries.size() > 1) {
                     stringBuffer.append("(");
-                    for (Query getQuery : mustQueries) {
-                        stringBuffer.append(getQueryString(getQuery));
-                        stringBuffer.append(" AND ");
-                    }
-                    stringBuffer = new StringBuffer(stringBuffer.substring(0, stringBuffer.lastIndexOf(" AND ")));
+                }
+                for (Query getQuery : mustQueries) {
+                    stringBuffer.append(formatQueryString(getQuery));
+                    stringBuffer.append(" AND ");
+                }
+                stringBuffer = new StringBuffer(stringBuffer.substring(0, stringBuffer.lastIndexOf(" AND ")));
+                if (mustQueries.size() > 1) {
                     stringBuffer.append(")");
                 }
             }
             if (filterQueries != null && filterQueries.size() > 0) {
                 //多条件-或查询
-                if (StringUtils.isNotBlank(stringBuffer.toString())) {
+                if (StringUtils.isNotBlank(stringBuffer.toString()) && !"(".equals(stringBuffer.toString())) {
                     stringBuffer.append(" AND ");
                 }
-                if (filterQueries.size() == 1) {
-                    stringBuffer.append(getQueryString(filterQueries.get(0)));
-                } else {
+                if (filterQueries.size() > 1) {
                     stringBuffer.append("(");
-                    for (Query getQuery : filterQueries) {
-                        stringBuffer.append(getQueryString(getQuery));
-                        stringBuffer.append(" OR ");
-                    }
-                    stringBuffer = new StringBuffer(stringBuffer.substring(0, stringBuffer.lastIndexOf(" OR ")));
+                }
+                for (Query getQuery : filterQueries) {
+                    stringBuffer.append(formatQueryString(getQuery));
+                    stringBuffer.append(" OR ");
+                }
+                stringBuffer = new StringBuffer(stringBuffer.substring(0, stringBuffer.lastIndexOf(" OR ")));
+                if (filterQueries.size() > 1) {
                     stringBuffer.append(")");
                 }
             }
             if (shouldQueries != null && shouldQueries.size() > 0) {
                 //多条件-或查询
-                if (StringUtils.isNotBlank(stringBuffer.toString())) {
+                if (StringUtils.isNotBlank(stringBuffer.toString()) && !"(".equals(stringBuffer.toString())) {
                     stringBuffer.append(" AND ");
                 }
-                if (shouldQueries.size() == 1) {
-                    stringBuffer.append(getQueryString(shouldQueries.get(0)));
-                } else {
+                if (shouldQueries.size() > 1) {
                     stringBuffer.append("(");
-                    for (Query getQuery : shouldQueries) {
-                        stringBuffer.append(getQueryString(getQuery));
-                        stringBuffer.append(" OR ");
-                    }
-                    stringBuffer = new StringBuffer(stringBuffer.substring(0, stringBuffer.lastIndexOf(" OR ")));
+                }
+                for (Query getQuery : shouldQueries) {
+                    stringBuffer.append(formatQueryString(getQuery));
+                    stringBuffer.append(" OR ");
+                }
+                stringBuffer = new StringBuffer(stringBuffer.substring(0, stringBuffer.lastIndexOf(" OR ")));
+                if (shouldQueries.size() > 1) {
                     stringBuffer.append(")");
                 }
             }
+            if (queryNum > 1) {
+                stringBuffer.append(")");
+            }
         }
+
         return stringBuffer.toString();
     }
 
