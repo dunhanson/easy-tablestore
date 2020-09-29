@@ -215,7 +215,7 @@ public class TableStoreMultipleIndexUtils {
      */
     public static String getQueryString(Query query) {
         String queryString = formatQueryString(query);
-        if (queryString.split("[(]+").length == 2) { // 有且仅有一个TermsQuery/RangQuery在最里层，0或多个BoolQuery在外层包裹：匹配连续多个(
+        if (queryString.split("[(]+").length == 2 && !queryString.startsWith("!")) { // 有且仅有一个TermsQuery/RangQuery在最里层，0或多个BoolQuery在外层包裹：匹配连续多个(
             queryString = queryString.replaceAll("[(]+", "").replaceAll("[)]+", "");
         } else { // BoolQuery在最外层
             if (queryString.startsWith("(") && queryString.endsWith(")")) {
