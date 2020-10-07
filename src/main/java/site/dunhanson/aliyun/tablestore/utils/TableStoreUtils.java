@@ -580,6 +580,9 @@ public class TableStoreUtils {
         String secondaryIndexName = "";     // 当前需要查询的二级索引
         for (String secondaryIndex : secondaryIndexList) {
             String key = secondaryIndex.replace(tableInfo.getTableName() + "_index2_", "");
+            if (secondaryIndex.equals(key)) {
+                key = secondaryIndex.replace(tableInfo.getTableName() + "_", "");
+            }
             Object value = jsonObject.get(CommonUtils.underlineToHump(key));
             if (value != null) {
                 if (value.getClass().getSimpleName().equals("Long")) {
@@ -676,6 +679,9 @@ public class TableStoreUtils {
         String secondaryIndexName = "";     // 当前需要查询的二级索引
         for (String secondaryIndex : secondaryIndexList) {
             String key = secondaryIndex.replace(tableInfo.getTableName() + "_index2_", "");
+            if (secondaryIndex.equals(key)) {
+                key = secondaryIndex.replace(tableInfo.getTableName() + "_", "");
+            }
             Object value = jsonObject.get(CommonUtils.underlineToHump(key));
             if (value != null) {
                 if (value.getClass().getSimpleName().equals("Long")) {
@@ -759,6 +765,9 @@ public class TableStoreUtils {
         String secondaryIndexName = "";     // 当前需要查询的二级索引
         for (String secondaryIndex : secondaryIndexList) {
             String key = secondaryIndex.replace(tableInfo.getTableName() + "_index2_", "");
+            if (secondaryIndex.equals(key)) {
+                key = secondaryIndex.replace(tableInfo.getTableName() + "_", "");
+            }
             Object value = jsonObject.get(CommonUtils.underlineToHump(key));
             if (value != null) {
                 if (value.getClass().getSimpleName().equals("Long")) {

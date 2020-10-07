@@ -37,7 +37,7 @@ public class Enterprise {
     /*投标数量*/
     private Integer touBiaoNumber;
     /*这个属性用于旧数据的升级(默认值为 1 )*/
-    private Integer upgradeStatus = 1;
+    private Long upgradeStatus = 1L;
     /*天眼查ID*/
     private Long tycId;
     /*机构信用代码*/
