@@ -1,5 +1,6 @@
 package site.dunhanson.aliyun.tablestore.test;
 
+import com.alibaba.fastjson.JSON;
 import com.alicloud.openservices.tablestore.model.ColumnValue;
 import com.alicloud.openservices.tablestore.model.search.SearchQuery;
 import com.alicloud.openservices.tablestore.model.search.query.BoolQuery;
@@ -100,13 +101,28 @@ public class UpdateTest {
 
     @Test
     public void te2() {
-        Document doc = new Document();
-        doc.setStatus(1L);
-//        List<DocumentExtract> docs = TableStoreUtils.getRangeBysecondaryIndex(doc, 1L, 10L, DocumentExtract.class, Arrays.asList("extract_json"), 100);
-//        System.out.println(docs);
 
-        int num = TableStoreUtils.countBysecondaryIndex(doc, 1L, 50L, Document.class);
-        System.out.println("[1,50]的数量="+num);
+
+        StringBuffer stringBuffer = new StringBuffer();
+        while (true){
+            stringBuffer.append("中");
+            if (stringBuffer.length() >= (6990500 - 2)) {
+                break;
+            }
+        }
+        String str = stringBuffer.toString();
+        str = "["+str+"]";
+        System.out.println(str.length());
+
+        Enterprise enterprise = new Enterprise();
+        enterprise.setName("国家电网有限公司12");
+        enterprise.setNicknames(str);
+        TableStoreUtils.insert(enterprise);
+
+//        List<Enterprise> list = new ArrayList<>();
+//        list.add(enterprise);
+//        int i = TableStoreUtils.batchUpdate(list);
+        System.out.println(12);
     }
 
     @Test

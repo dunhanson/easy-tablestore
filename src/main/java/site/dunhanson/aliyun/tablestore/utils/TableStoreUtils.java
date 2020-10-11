@@ -83,7 +83,11 @@ public class TableStoreUtils {
                         rowPutChange.addColumn(new Column(key, ColumnValue.fromString(format)));
                     } else if (value.toString().matches("^\\[.*\\]$")) { // json数组，ots只支持json数组的嵌套数据类型，需要把驼峰法转成下划线再入库
                         String text = JSON.toJSONString(value, serializeConfig);
-                        rowPutChange.addColumn(new Column(key, ColumnValue.fromString(text)));
+                        List<String> columnValues = getColumnValues(text);
+                        for (int i = 0; i < columnValues.size(); i++) {
+                            key = (i == 0) ? key : (key + i);
+                            rowPutChange.addColumn(new Column(key, ColumnValue.fromString(text)));
+                        }
                     }
                 }
             }
@@ -168,14 +172,59 @@ public class TableStoreUtils {
                     String format = sdf.format(value);
                     rowUpdateChange.put(new Column(key, ColumnValue.fromString(format)));
                 } else if (value.toString().matches("^\\[.*\\]$")) { // json数组，ots只支持json数组的嵌套数据类型，需要把驼峰法转成下划线再入库
+                    // 手动请处理存在的列
+                    deleteColumn(rowUpdateChange, key);
+
+                    // 再存入
                     String text = JSON.toJSONString(value, serializeConfig);
-                    rowUpdateChange.put(new Column(key, ColumnValue.fromString(text)));
+                    List<String> columnValues = getColumnValues(text);
+                    for (int i = 0; i < columnValues.size(); i++) {
+                        key = (i == 0) ? key : (key + i);
+                        rowUpdateChange.put(new Column(key, ColumnValue.fromString(text)));
+                    }
                 }
             }
         }
         Condition condition = new Condition(RowExistenceExpectation.EXPECT_EXIST);
         rowUpdateChange.setCondition(condition);
         return rowUpdateChange;
+    }
+
+    /**
+     * 获取拆分后的值（因为ots每个字段最多存2M（以长度 699050 为拆分），所以做了拆分，拆分规则 columnName/columnName1/columnName2 ... columnName9 最多拆成10列）
+     * @param value
+     */
+    private static List<String> getColumnValues(String value) {
+        int columnLength = 699050;
+        int maxLength = columnLength * 10;
+        int length = value.length();
+
+        List<String> result = new ArrayList<>();
+        if (length <= maxLength) {   // 必须小于等于10列才会存储，否则放弃
+            int size = (length % columnLength == 0) ? (length / columnLength) : (length / columnLength + 1);
+            for (int i = 0; i < size; i++) {
+                int start = i * columnLength;
+                int end = start + columnLength;
+                if (end > length) {
+                    result.add(value.substring(start, length));
+                } else {
+                    result.add(value.substring(start, end));
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 删除拆分的列（因为ots每个字段最多存2M，所以做了拆分，拆分规则 columnName/columnName1/columnName2 ... columnName9 最多拆成10列）
+     * @param rowUpdateChange
+     * @param columnName
+     */
+    private static void deleteColumn(RowUpdateChange rowUpdateChange, String columnName) {
+        rowUpdateChange.deleteColumns(columnName);
+        for (int i = 1; i < 10; i++) {
+            rowUpdateChange.deleteColumns(columnName + i);
+        }
     }
 
 
@@ -224,7 +273,11 @@ public class TableStoreUtils {
                     rowPutChange.addColumn(new Column(key, ColumnValue.fromString(format)));
                 } else if (value.toString().matches("^\\[.*\\]$")) { // json数组，ots只支持json数组的嵌套数据类型，需要把驼峰法转成下划线再入库
                     String text = JSON.toJSONString(value, serializeConfig);
-                    rowPutChange.addColumn(new Column(key, ColumnValue.fromString(text)));
+                    List<String> columnValues = getColumnValues(text);
+                    for (int i = 0; i < columnValues.size(); i++) {
+                        key = (i == 0) ? key : (key + i);
+                        rowPutChange.addColumn(new Column(key, ColumnValue.fromString(text)));
+                    }
                 }
             }
         }

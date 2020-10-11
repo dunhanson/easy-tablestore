@@ -139,11 +139,17 @@ public class CommonUtils {
             }
             obj.put(name, value);
         }
-        //遍历列
+        //遍历普通列
         Column[] columns = row.getColumns();
+        Map<String, Object> tempMap = new HashMap<>();
+        for (Column column : columns) {
+            tempMap.put(column.getName(), column.getValue().getValue());
+        }
+
         for(int i = 0; i < columns.length; i++) {
             Column column = columns[i];
             String name = column.getName();
+            String columnName = name;       // 数据库的字段名称
             Object value = column.getValue().getValue();
             //包含下划线，转换成驼峰
             if(name.contains(Constants.UNDERLINE)) {
@@ -151,19 +157,45 @@ public class CommonUtils {
             }
             Field field = fieldMap.get(name);
             if (value != null && field != null) {
-//                if ("List".equals(field.getType().getSimpleName())) {  // 因为现在嵌套的只有json数组类型
-                if (value.toString().matches("^\\[.*\\]$")) {  // 因为现在嵌套的只有json数组类型
-                   try {
-                       obj.put(name, JSON.parseArray(value.toString()));
-                   }catch (Exception e){
-                       obj.put(name, value);    // 其他的 [XXX] 排除掉
-                   }
+                if (value.toString().startsWith("\\[")) {       // 如果是嵌套字段，并且做了拆分，并且有 [ 开头，没有 ] 结尾的，视为不合法的值，需要针对性修复
+                    String allValues = getAllValues(tempMap, columnName);       // 需要获取拆分的所有值
+                    if (allValues.matches("^\\[.*\\]$")) {  // 因为现在嵌套的只有json数组类型
+                        try {
+                            obj.put(name, JSON.parseArray(allValues));
+                        }catch (Exception e){
+                            obj.put(name, value);    // 其他的 [XXX] 排除掉
+                        }
+                    } else {
+                        obj.put(name, value);
+                    }
                 } else {
                     obj.put(name, value);
                 }
             }
         }
         return JSON.parseObject(obj.toJSONString(), clazz);
+    }
+
+    /**
+     * 获取拆分的所有值（因为ots每个字段最多存2M，所以做了拆分，拆分规则 columnName/columnName1/columnName2 ... columnName9 最多拆成10列）
+     * @param tempMap
+     * @param columnName
+     * @return
+     */
+    private static String getAllValues(Map<String, Object> tempMap, String columnName) {
+        String result = "";
+        if (tempMap != null && columnName != null) {
+            result = tempMap.get(columnName).toString();    // 注意：此时这里一定需要不为空，否则为非法调用
+            for (int i = 1; i < 10; i++) {
+                Object o = tempMap.get(columnName + i);
+                if (o != null) {
+                    result += o.toString();
+                } else {
+                    break;
+                }
+            }
+        }
+        return result;
     }
 
     /**
