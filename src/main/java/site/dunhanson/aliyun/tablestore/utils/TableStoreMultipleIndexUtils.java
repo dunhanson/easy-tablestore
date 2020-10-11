@@ -180,14 +180,14 @@ public class TableStoreMultipleIndexUtils {
         //日志打印
         StringBuffer logStr = new StringBuffer();
         logStr.append("\n");
-        logStr.append("---------------------- TableStore Search ----------------------");
+        logStr.append("---------------------- {} ----------------------");
         logStr.append("\n");
         logStr.append("Search：" + getQueryString(searchQuery.getQuery()));
         logStr.append("\n");
         logStr.append("ElapsedTime：" + ChronoUnit.MILLIS.between(startTime, endTime) + "ms");
         logStr.append("\n");
-        logStr.append("---------------------- TableStore Search ----------------------");
-        log.info(logStr.toString());
+        logStr.append("---------------------------------------------------------------");
+        log.info(logStr.toString(), "TableStore Search");
         return page;
     }
 
