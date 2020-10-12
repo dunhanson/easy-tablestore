@@ -86,7 +86,7 @@ public class TableStoreUtils {
                         List<String> columnValues = getColumnValues(text);
                         for (int i = 0; i < columnValues.size(); i++) {
                             String columnName = (i == 0) ? key : (key + i);
-                            rowPutChange.addColumn(new Column(columnName, ColumnValue.fromString(text)));
+                            rowPutChange.addColumn(new Column(columnName, ColumnValue.fromString(columnValues.get(i))));
                         }
                     }
                 }
@@ -180,7 +180,7 @@ public class TableStoreUtils {
                     List<String> columnValues = getColumnValues(text);
                     for (int i = 0; i < columnValues.size(); i++) {
                         String columnName = (i == 0) ? key : (key + i);
-                        rowUpdateChange.put(new Column(columnName, ColumnValue.fromString(text)));
+                        rowUpdateChange.put(new Column(columnName, ColumnValue.fromString(columnValues.get(i))));
                     }
                 }
             }
@@ -276,7 +276,7 @@ public class TableStoreUtils {
                     List<String> columnValues = getColumnValues(text);
                     for (int i = 0; i < columnValues.size(); i++) {
                         String columnName = (i == 0) ? key : (key + i);
-                        rowPutChange.addColumn(new Column(columnName, ColumnValue.fromString(text)));
+                        rowPutChange.addColumn(new Column(columnName, ColumnValue.fromString(columnValues.get(i))));
                     }
                 }
             }
