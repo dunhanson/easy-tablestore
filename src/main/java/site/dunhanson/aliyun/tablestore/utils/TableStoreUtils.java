@@ -85,8 +85,8 @@ public class TableStoreUtils {
                         String text = JSON.toJSONString(value, serializeConfig);
                         List<String> columnValues = getColumnValues(text);
                         for (int i = 0; i < columnValues.size(); i++) {
-                            key = (i == 0) ? key : (key + i);
-                            rowPutChange.addColumn(new Column(key, ColumnValue.fromString(text)));
+                            String columnName = (i == 0) ? key : (key + i);
+                            rowPutChange.addColumn(new Column(columnName, ColumnValue.fromString(text)));
                         }
                     }
                 }
@@ -179,8 +179,8 @@ public class TableStoreUtils {
                     String text = JSON.toJSONString(value, serializeConfig);
                     List<String> columnValues = getColumnValues(text);
                     for (int i = 0; i < columnValues.size(); i++) {
-                        key = (i == 0) ? key : (key + i);
-                        rowUpdateChange.put(new Column(key, ColumnValue.fromString(text)));
+                        String columnName = (i == 0) ? key : (key + i);
+                        rowUpdateChange.put(new Column(columnName, ColumnValue.fromString(text)));
                     }
                 }
             }
@@ -275,8 +275,8 @@ public class TableStoreUtils {
                     String text = JSON.toJSONString(value, serializeConfig);
                     List<String> columnValues = getColumnValues(text);
                     for (int i = 0; i < columnValues.size(); i++) {
-                        key = (i == 0) ? key : (key + i);
-                        rowPutChange.addColumn(new Column(key, ColumnValue.fromString(text)));
+                        String columnName = (i == 0) ? key : (key + i);
+                        rowPutChange.addColumn(new Column(columnName, ColumnValue.fromString(text)));
                     }
                 }
             }
