@@ -638,7 +638,8 @@ public class TableStoreUtils {
             }
             Object value = jsonObject.get(CommonUtils.underlineToHump(key));
             if (value != null) {
-                if (value.getClass().getSimpleName().equals("Long")) {
+                String simpleName = value.getClass().getSimpleName();
+                if (simpleName.equals("Long") || simpleName.equals("Integer")) {
                     startPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromLong((Long) value)); // 索引表PK最小值。
                     endPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromLong((Long) value)); // 索引表PK最大值。
                 } else {
@@ -737,7 +738,8 @@ public class TableStoreUtils {
             }
             Object value = jsonObject.get(CommonUtils.underlineToHump(key));
             if (value != null) {
-                if (value.getClass().getSimpleName().equals("Long")) {
+                String simpleName = value.getClass().getSimpleName();
+                if (simpleName.equals("Long") || simpleName.equals("Integer")) {
                     startPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromLong((Long) start)); // 索引表PK最小值。
                     endPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromLong((Long) end)); // 索引表PK最大值。
                 } else {
@@ -823,7 +825,8 @@ public class TableStoreUtils {
             }
             Object value = jsonObject.get(CommonUtils.underlineToHump(key));
             if (value != null) {
-                if (value.getClass().getSimpleName().equals("Long")) {
+                String simpleName = value.getClass().getSimpleName();
+                if (simpleName.equals("Long") || simpleName.equals("Integer")) {
                     startPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromLong((Long) start)); // 索引表PK最小值。
                     endPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromLong((Long) end)); // 索引表PK最大值。
                 } else {
