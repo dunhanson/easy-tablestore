@@ -157,7 +157,7 @@ public class CommonUtils {
             }
             Field field = fieldMap.get(name);
             if (value != null && field != null) {
-                if (value.toString().startsWith("\\[")) {       // 如果是嵌套字段，并且做了拆分，并且有 [ 开头，没有 ] 结尾的，视为不合法的值，需要针对性修复
+                if (value.toString().startsWith("[")) {       // 如果是嵌套字段，并且做了拆分，并且有 [ 开头，没有 ] 结尾的，视为不合法的值，需要针对性修复
                     String allValues = getAllValues(tempMap, columnName);       // 需要获取拆分的所有值
                     if (allValues.matches("^\\[.*\\]$")) {  // 因为现在嵌套的只有json数组类型
                         try {
