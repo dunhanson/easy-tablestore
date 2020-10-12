@@ -81,12 +81,22 @@ public class TableStoreUtils {
                         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                         String format = sdf.format(value);
                         rowPutChange.addColumn(new Column(key, ColumnValue.fromString(format)));
-                    } else if (value.toString().matches("^\\[.*\\]$")) { // json数组，ots只支持json数组的嵌套数据类型，需要把驼峰法转成下划线再入库
+//                    } else if (value.toString().matches("^\\[.*\\]$")) { // json数组，ots只支持json数组的嵌套数据类型，需要把驼峰法转成下划线再入库
+//                        String text = JSON.toJSONString(value, serializeConfig);
+//                        List<String> columnValues = getColumnValues(text);
+//                        for (int i = 0; i < columnValues.size(); i++) {
+//                            String columnName = (i == 0) ? key : (key + i);
+//                            rowPutChange.addColumn(new Column(columnName, ColumnValue.fromString(columnValues.get(i))));
+//                        }
+//                    }
+                    } else { // json数组，ots只支持json数组的嵌套数据类型，需要把驼峰法转成下划线再入库
                         String text = JSON.toJSONString(value, serializeConfig);
-                        List<String> columnValues = getColumnValues(text);
-                        for (int i = 0; i < columnValues.size(); i++) {
-                            String columnName = (i == 0) ? key : (key + i);
-                            rowPutChange.addColumn(new Column(columnName, ColumnValue.fromString(columnValues.get(i))));
+                        if (text.matches("^\\[.*\\]$")) {
+                            List<String> columnValues = getColumnValues(text);
+                            for (int i = 0; i < columnValues.size(); i++) {
+                                String columnName = (i == 0) ? key : (key + i);
+                                rowPutChange.addColumn(new Column(columnName, ColumnValue.fromString(columnValues.get(i))));
+                            }
                         }
                     }
                 }
@@ -171,16 +181,29 @@ public class TableStoreUtils {
                     SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                     String format = sdf.format(value);
                     rowUpdateChange.put(new Column(key, ColumnValue.fromString(format)));
-                } else if (value.toString().matches("^\\[.*\\]$")) { // json数组，ots只支持json数组的嵌套数据类型，需要把驼峰法转成下划线再入库
-                    // 手动请处理存在的列
-                    deleteColumn(rowUpdateChange, key);
-
-                    // 再存入
+//                } else if (value.toString().matches("^\\[.*\\]$")) { // json数组，ots只支持json数组的嵌套数据类型，需要把驼峰法转成下划线再入库
+//                    // 手动请处理存在的列
+//                    deleteColumn(rowUpdateChange, key);
+//
+//                    // 再存入
+//                    String text = JSON.toJSONString(value, serializeConfig);
+//                    List<String> columnValues = getColumnValues(text);
+//                    for (int i = 0; i < columnValues.size(); i++) {
+//                        String columnName = (i == 0) ? key : (key + i);
+//                        rowUpdateChange.put(new Column(columnName, ColumnValue.fromString(columnValues.get(i))));
+//                    }
+//                }
+                } else { // json数组，ots只支持json数组的嵌套数据类型，需要把驼峰法转成下划线再入库
                     String text = JSON.toJSONString(value, serializeConfig);
-                    List<String> columnValues = getColumnValues(text);
-                    for (int i = 0; i < columnValues.size(); i++) {
-                        String columnName = (i == 0) ? key : (key + i);
-                        rowUpdateChange.put(new Column(columnName, ColumnValue.fromString(columnValues.get(i))));
+                    if (text.matches("^\\[.*\\]$")) {
+                        // 手动请处理存在的列
+                        deleteColumn(rowUpdateChange, key);
+                        // 再存入
+                        List<String> columnValues = getColumnValues(text);
+                        for (int i = 0; i < columnValues.size(); i++) {
+                            String columnName = (i == 0) ? key : (key + i);
+                            rowUpdateChange.put(new Column(columnName, ColumnValue.fromString(columnValues.get(i))));
+                        }
                     }
                 }
             }
@@ -271,12 +294,22 @@ public class TableStoreUtils {
                     SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                     String format = sdf.format(value);
                     rowPutChange.addColumn(new Column(key, ColumnValue.fromString(format)));
-                } else if (value.toString().matches("^\\[.*\\]$")) { // json数组，ots只支持json数组的嵌套数据类型，需要把驼峰法转成下划线再入库
+//                } else if (value.toString().matches("^\\[.*\\]$")) { // json数组，ots只支持json数组的嵌套数据类型，需要把驼峰法转成下划线再入库
+//                    String text = JSON.toJSONString(value, serializeConfig);
+//                    List<String> columnValues = getColumnValues(text);
+//                    for (int i = 0; i < columnValues.size(); i++) {
+//                        String columnName = (i == 0) ? key : (key + i);
+//                        rowPutChange.addColumn(new Column(columnName, ColumnValue.fromString(columnValues.get(i))));
+//                    }
+//                }
+                } else { // json数组，ots只支持json数组的嵌套数据类型，需要把驼峰法转成下划线再入库
                     String text = JSON.toJSONString(value, serializeConfig);
-                    List<String> columnValues = getColumnValues(text);
-                    for (int i = 0; i < columnValues.size(); i++) {
-                        String columnName = (i == 0) ? key : (key + i);
-                        rowPutChange.addColumn(new Column(columnName, ColumnValue.fromString(columnValues.get(i))));
+                    if (text.matches("^\\[.*\\]$")) {
+                        List<String> columnValues = getColumnValues(text);
+                        for (int i = 0; i < columnValues.size(); i++) {
+                            String columnName = (i == 0) ? key : (key + i);
+                            rowPutChange.addColumn(new Column(columnName, ColumnValue.fromString(columnValues.get(i))));
+                        }
                     }
                 }
             }
