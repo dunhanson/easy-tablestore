@@ -106,23 +106,48 @@ public class UpdateTest {
         StringBuffer stringBuffer = new StringBuffer();
         while (true){
             stringBuffer.append("中");
-            if (stringBuffer.length() >= (6990500 - 2)) {
+            if (stringBuffer.length() >= 1699050) { // 699050
                 break;
             }
         }
         String str = stringBuffer.toString();
-        str = "["+str+"]";
         System.out.println(str.length());
 
         Enterprise enterprise = new Enterprise();
         enterprise.setName("国家电网有限公司12");
-        enterprise.setNicknames(str);
-        TableStoreUtils.insert(enterprise);
+        enterprise.setProvince("广东");
 
+        List<EnterpriseProfilePatentItem> list = new ArrayList<>();
+        EnterpriseProfilePatentItem item = new EnterpriseProfilePatentItem();
+        item.setAddress(str);
+        list.add(item);
+        enterprise.setPatents(list);
+//
+        TableStoreUtils.insert(enterprise);
+//        TableStoreUtils.update(enterprise);
+//        System.out.println(12);
+
+//
 //        List<Enterprise> list = new ArrayList<>();
-//        list.add(enterprise);
-//        int i = TableStoreUtils.batchUpdate(list);
-        System.out.println(12);
+////        list.add(enterprise);
+////        int i = TableStoreUtils.batchUpdate(list);
+//        System.out.println(12);
+
+//        Enterprise enterprise = new Enterprise();
+//        enterprise.setName("国家电网有限公司12");
+//
+//        Enterprise enterprise1 = TableStoreUtils.get(enterprise, Enterprise.class);
+//        System.out.println(enterprise1.getName());
+
+    }
+
+    @Test
+    public void tee() {
+        Enterprise enterprise = new Enterprise();
+        enterprise.setName("国家电网有限公司12");
+        int i = TableStoreUtils.deleteColumns(enterprise, Arrays.asList("patents2", "province","upgrade_status","a"));
+        System.out.println(i);
+
     }
 
     @Test

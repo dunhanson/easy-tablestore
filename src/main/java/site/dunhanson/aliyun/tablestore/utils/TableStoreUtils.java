@@ -6,6 +6,7 @@ import com.alibaba.fastjson.PropertyNamingStrategy;
 import com.alibaba.fastjson.serializer.SerializeConfig;
 import com.alicloud.openservices.tablestore.SyncClient;
 import com.alicloud.openservices.tablestore.TableStoreException;
+import com.alicloud.openservices.tablestore.core.utils.Pair;
 import com.alicloud.openservices.tablestore.model.*;
 import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +24,10 @@ import java.util.*;
 @Slf4j
 public class TableStoreUtils {
 
+    /*每列最大2M，换成长度为 699050*/
+    private static int columnMaxLength = 699050;
+    /*每次请求（新增/更新）最大4M，换成长度为 699050 * 2*/
+    private static int requestMaxLength = 699050 * 2;
     /**
      * SerializeConfig全局一个即可
      */
@@ -61,6 +66,7 @@ public class TableStoreUtils {
             RowPutChange rowPutChange = new RowPutChange(aliasBasicInfo.getTableName(), primaryKey);
 
             // 2、设置其他属性
+            StringBuilder stringBuilder = new StringBuilder();
             for (Map.Entry<String, Field> map : fieldMap.entrySet()) {
                 String key = map.getKey();
                 Field field = map.getValue();
@@ -68,45 +74,75 @@ public class TableStoreUtils {
                 key = CommonUtils.humpToUnderline(key);     // 驼峰转下划线
                 if (!primaryKeyList.contains(key) && value != null) {       // 非主键 非空 判断
                     if (field.getType().getSimpleName().equals("String")) {      // 待完善 其他类型当成字符串处理，目前是够用的
+                        if (exceedRequestMaxLength(client, rowPutChange, stringBuilder, value, obj)) {
+                            return 1;
+                        }
                         rowPutChange.addColumn(new Column(key, ColumnValue.fromString((String) value)));
                     } else if (field.getType().getSimpleName().equals("Integer")) {
+                        if (exceedRequestMaxLength(client, rowPutChange, stringBuilder, value, obj)) {
+                            return 1;
+                        }
                         rowPutChange.addColumn(new Column(key, ColumnValue.fromLong((Integer) value)));
                     } else if (field.getType().getSimpleName().equals("Long")) {
+                        if (exceedRequestMaxLength(client, rowPutChange, stringBuilder, value, obj)) {
+                            return 1;
+                        }
                         rowPutChange.addColumn(new Column(key, ColumnValue.fromLong((Long) value)));
                     } else if (field.getType().getSimpleName().equals("Double")) {
+                        if (exceedRequestMaxLength(client, rowPutChange, stringBuilder, value, obj)) {
+                            return 1;
+                        }
                         rowPutChange.addColumn(new Column(key, ColumnValue.fromDouble(Double.valueOf(value.toString()))));
                     }  else if (field.getType().getSimpleName().equals("Boolean")) {
+                        if (exceedRequestMaxLength(client, rowPutChange, stringBuilder, value, obj)) {
+                            return 1;
+                        }
                         rowPutChange.addColumn(new Column(key, ColumnValue.fromBoolean(Boolean.valueOf(value.toString()))));
                     } else if (field.getType().getSimpleName().equals("Date"))  {
                         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                         String format = sdf.format(value);
+                        if (exceedRequestMaxLength(client, rowPutChange, stringBuilder, format, obj)) {
+                            return 1;
+                        }
                         rowPutChange.addColumn(new Column(key, ColumnValue.fromString(format)));
-//                    } else if (value.toString().matches("^\\[.*\\]$")) { // json数组，ots只支持json数组的嵌套数据类型，需要把驼峰法转成下划线再入库
-//                        String text = JSON.toJSONString(value, serializeConfig);
-//                        List<String> columnValues = getColumnValues(text);
-//                        for (int i = 0; i < columnValues.size(); i++) {
-//                            String columnName = (i == 0) ? key : (key + i);
-//                            rowPutChange.addColumn(new Column(columnName, ColumnValue.fromString(columnValues.get(i))));
-//                        }
-//                    }
                     } else { // json数组，ots只支持json数组的嵌套数据类型，需要把驼峰法转成下划线再入库
                         String text = JSON.toJSONString(value, serializeConfig);
                         if (text.matches("^\\[.*\\]$")) {
                             List<String> columnValues = getColumnValues(text);
                             for (int i = 0; i < columnValues.size(); i++) {
+                                String tempValue = columnValues.get(i);
+                                if (exceedRequestMaxLength(client, rowPutChange, stringBuilder, tempValue, obj)) {
+                                    return 1;
+                                }
                                 String columnName = (i == 0) ? key : (key + i);
-                                rowPutChange.addColumn(new Column(columnName, ColumnValue.fromString(columnValues.get(i))));
+                                rowPutChange.addColumn(new Column(columnName, ColumnValue.fromString(tempValue)));
                             }
                         }
                     }
                 }
             }
 
-            // 3、写入
             PutRowResponse putRowResponse = client.putRow(new PutRowRequest(rowPutChange));
-            num = putRowResponse.getConsumedCapacity().getCapacityUnit().getWriteCapacityUnit();
+            num = 1;
         }
         return num;
+    }
+
+    /**
+     * 是否超出最大每次请求（新增/更新）最大4M，换成长度为 699050 * 2
+     * @param stringBuilder
+     * @param value
+     * @return
+     */
+    private static boolean exceedRequestMaxLength(SyncClient client, RowPutChange rowPutChange, StringBuilder stringBuilder, Object value, Object obj) {
+        stringBuilder.append(value);
+        if (stringBuilder.length() > requestMaxLength) {        // 超过了限制，则先新增，后面再分批更新
+            rowPutChange.getColumnsToPut().clear();
+            PutRowResponse putRowResponse = client.putRow(new PutRowRequest(rowPutChange));
+            update(obj);
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -119,29 +155,197 @@ public class TableStoreUtils {
         TableInfo aliasBasicInfo = CommonUtils.getTableInfo(obj);
         SyncClient client = Store.getInstance().getSyncClient();
 
-        // 1、构建更新的对象
-        RowUpdateChange rowUpdateChange = getRowUpdateChange(obj, aliasBasicInfo);
 
-        // 2、更新
-        int num = 0;
-        try {
-            UpdateRowResponse updateRowResponse = client.updateRow(new UpdateRowRequest(rowUpdateChange));
-            num = updateRowResponse.getConsumedCapacity().getCapacityUnit().getWriteCapacityUnit();
-        }catch (TableStoreException e){
-            if ("OTSConditionCheckFail".equals(e.getErrorCode())) {     // 期望不一致返回 num=0即可
-                return 0;
+        JSONObject jsonObject = (JSONObject) JSON.toJSON(obj);
+
+        // 1、构造主键
+        PrimaryKeyBuilder primaryKeyBuilder = PrimaryKeyBuilder.createPrimaryKeyBuilder();
+        List<String> primaryKeyList = aliasBasicInfo.getPrimaryKey();
+        for (String key : primaryKeyList) {
+            Object value = jsonObject.get(CommonUtils.underlineToHump(key));
+            if (value.getClass().getSimpleName().equals("Long")) {
+                primaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromLong((Long) value));
             } else {
-                e.printStackTrace();
-                throw e;
+                primaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromString((String) value));
+            }
+        }
+        PrimaryKey primaryKey = primaryKeyBuilder.build();
+        RowUpdateChange rowUpdateChange = new RowUpdateChange(aliasBasicInfo.getTableName(), primaryKey);
+
+        // 2、设置其他属性
+        StringBuilder stringBuilder = new StringBuilder();
+        for (Map.Entry<String, Object> map : jsonObject.entrySet()) {
+            String key = map.getKey();
+            Object value = map.getValue();
+            key = CommonUtils.humpToUnderline(key);     // 驼峰转下划线
+            if (!primaryKeyList.contains(key) && value != null) {       // 非主键 非空 判断
+                if (value.getClass().getSimpleName().equals("String")) {      // 待完善 其他类型当成字符串处理，目前是够用的
+                    if (exceedRequestMaxLengthForUpdate(client, rowUpdateChange, stringBuilder, value)) {   // 如果达到了最高请求，则重置
+                        rowUpdateChange = new RowUpdateChange(aliasBasicInfo.getTableName(), primaryKey);
+                        stringBuilder = new StringBuilder();
+                    }
+                    rowUpdateChange.put(new Column(key, ColumnValue.fromString((String) value)));
+                } else if (value.getClass().getSimpleName().equals("Integer")) {
+                    if (exceedRequestMaxLengthForUpdate(client, rowUpdateChange, stringBuilder, value)) {   // 如果达到了最高请求，则重置
+                        rowUpdateChange = new RowUpdateChange(aliasBasicInfo.getTableName(), primaryKey);
+                        stringBuilder = new StringBuilder();
+                    }
+                    rowUpdateChange.put(new Column(key, ColumnValue.fromLong((Integer) value)));
+                } else if (value.getClass().getSimpleName().equals("Long")) {      // 待完善 其他类型当成字符串处理，目前是够用的
+                    if (exceedRequestMaxLengthForUpdate(client, rowUpdateChange, stringBuilder, value)) {   // 如果达到了最高请求，则重置
+                        rowUpdateChange = new RowUpdateChange(aliasBasicInfo.getTableName(), primaryKey);
+                        stringBuilder = new StringBuilder();
+                    }
+                    rowUpdateChange.put(new Column(key, ColumnValue.fromLong((Long) value)));
+                } else if (value.getClass().getSimpleName().equals("Double")) {
+                    if (exceedRequestMaxLengthForUpdate(client, rowUpdateChange, stringBuilder, value)) {   // 如果达到了最高请求，则重置
+                        rowUpdateChange = new RowUpdateChange(aliasBasicInfo.getTableName(), primaryKey);
+                        stringBuilder = new StringBuilder();
+                    }
+                    rowUpdateChange.put(new Column(key, ColumnValue.fromDouble(Double.valueOf(value.toString()))));
+                } else if (value.getClass().getSimpleName().equals("Boolean")) {
+                    if (exceedRequestMaxLengthForUpdate(client, rowUpdateChange, stringBuilder, value)) {   // 如果达到了最高请求，则重置
+                        rowUpdateChange = new RowUpdateChange(aliasBasicInfo.getTableName(), primaryKey);
+                        stringBuilder = new StringBuilder();
+                    }
+                    rowUpdateChange.put(new Column(key, ColumnValue.fromBoolean(Boolean.valueOf(value.toString()))));
+                } else if (value.getClass().getSimpleName().equals("Date"))  {
+                    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                    String format = sdf.format(value);
+
+                    if (exceedRequestMaxLengthForUpdate(client, rowUpdateChange, stringBuilder, format)) {   // 如果达到了最高请求，则重置
+                        rowUpdateChange = new RowUpdateChange(aliasBasicInfo.getTableName(), primaryKey);
+                        stringBuilder = new StringBuilder();
+                    }
+                    rowUpdateChange.put(new Column(key, ColumnValue.fromString(format)));
+                } else { // json数组，ots只支持json数组的嵌套数据类型，需要把驼峰法转成下划线再入库
+                    String text = JSON.toJSONString(value, serializeConfig);
+                    if (text.matches("^\\[.*\\]$")) {
+                        // 手动请处理存在的列
+                        deleteColumn(rowUpdateChange, key);
+                        // 再存入
+                        List<String> columnValues = getColumnValues(text);
+                        for (int i = 0; i < columnValues.size(); i++) {
+                            String columnName = (i == 0) ? key : (key + i);
+                            String tempValue = columnValues.get(i);
+                            if (exceedRequestMaxLengthForUpdate(client, rowUpdateChange, stringBuilder, tempValue)) {   // 如果达到了最高请求，则重置
+                                rowUpdateChange = new RowUpdateChange(aliasBasicInfo.getTableName(), primaryKey);
+                                stringBuilder = new StringBuilder();
+                            }
+                            rowUpdateChange.put(new Column(columnName, ColumnValue.fromString(tempValue)));
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2、更新（最后一次）
+        int num = 0;
+        List<Pair<Column, RowUpdateChange.Type>> columnsToUpdate = rowUpdateChange.getColumnsToUpdate();
+        if (columnsToUpdate != null && columnsToUpdate.size() > 0) {
+            Condition condition = new Condition(RowExistenceExpectation.EXPECT_EXIST);
+            rowUpdateChange.setCondition(condition);
+
+            try {
+                UpdateRowResponse updateRowResponse = client.updateRow(new UpdateRowRequest(rowUpdateChange));
+                num = 1;
+            }catch (TableStoreException e){
+                if ("OTSConditionCheckFail".equals(e.getErrorCode())) {     // 期望不一致返回 num=0即可
+                    return 0;
+                } else {
+                    e.printStackTrace();
+                    throw e;
+                }
             }
         }
         return num;
     }
 
+
+    /**
+     * 更新不为空的字段
+     * @param obj   实体类对象实例
+     * @return
+     */
+    public static int deleteColumns(Object obj, List<String> columnNames) {
+        // 获取表的配置信息
+        TableInfo aliasBasicInfo = CommonUtils.getTableInfo(obj);
+        SyncClient client = Store.getInstance().getSyncClient();
+
+
+        JSONObject jsonObject = (JSONObject) JSON.toJSON(obj);
+
+        // 1、构造主键
+        PrimaryKeyBuilder primaryKeyBuilder = PrimaryKeyBuilder.createPrimaryKeyBuilder();
+        List<String> primaryKeyList = aliasBasicInfo.getPrimaryKey();
+        for (String key : primaryKeyList) {
+            Object value = jsonObject.get(CommonUtils.underlineToHump(key));
+            if (value.getClass().getSimpleName().equals("Long")) {
+                primaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromLong((Long) value));
+            } else {
+                primaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromString((String) value));
+            }
+        }
+        PrimaryKey primaryKey = primaryKeyBuilder.build();
+        RowUpdateChange rowUpdateChange = new RowUpdateChange(aliasBasicInfo.getTableName(), primaryKey);
+        // 构建需要删除的字段
+        for (String columnName : columnNames) {
+            rowUpdateChange.deleteColumns(columnName);
+        }
+
+        // 2、更新
+        int num = 0;
+        List<Pair<Column, RowUpdateChange.Type>> columnsToUpdate = rowUpdateChange.getColumnsToUpdate();
+        if (columnsToUpdate != null && columnsToUpdate.size() > 0) {
+            Condition condition = new Condition(RowExistenceExpectation.EXPECT_EXIST);
+            rowUpdateChange.setCondition(condition);
+
+            try {
+                UpdateRowResponse updateRowResponse = client.updateRow(new UpdateRowRequest(rowUpdateChange));
+                num = 1;
+            }catch (TableStoreException e){
+                if ("OTSConditionCheckFail".equals(e.getErrorCode())) {     // 期望不一致返回 num=0即可
+                    return 0;
+                } else {
+                    e.printStackTrace();
+                    throw e;
+                }
+            }
+        }
+        return num;
+    }
+
+
+    /**
+     * 是否超出最大每次请求（更新）最大4M，换成长度为 699050 * 2
+     * @param stringBuilder
+     * @param value
+     * @return
+     */
+    private static boolean exceedRequestMaxLengthForUpdate(SyncClient client, RowUpdateChange rowUpdateChange, StringBuilder stringBuilder, Object value) {
+        stringBuilder.append(value);
+        if (stringBuilder.length() > requestMaxLength) {        // 超过了限制，则请求一次
+            Condition condition = new Condition(RowExistenceExpectation.EXPECT_EXIST);
+            rowUpdateChange.setCondition(condition);
+            try {
+                UpdateRowResponse updateRowResponse = client.updateRow(new UpdateRowRequest(rowUpdateChange));
+            }catch (TableStoreException e){
+                if ("OTSConditionCheckFail".equals(e.getErrorCode())) {     // 期望不一致返回 num=0即可
+
+                } else {
+                    e.printStackTrace();
+                    throw e;
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
     /**
      * 获取 {@link RowUpdateChange}  行的更新对象（只会更新不为空的字段）
      * @param obj            实体类对象实例
-     * @param tableInfo    {@link TableInfo}
+     * @param tableInfo    {@link TableInfo}i
      * @return
      */
     private static RowUpdateChange getRowUpdateChange(Object obj, TableInfo tableInfo) {
@@ -181,18 +385,6 @@ public class TableStoreUtils {
                     SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                     String format = sdf.format(value);
                     rowUpdateChange.put(new Column(key, ColumnValue.fromString(format)));
-//                } else if (value.toString().matches("^\\[.*\\]$")) { // json数组，ots只支持json数组的嵌套数据类型，需要把驼峰法转成下划线再入库
-//                    // 手动请处理存在的列
-//                    deleteColumn(rowUpdateChange, key);
-//
-//                    // 再存入
-//                    String text = JSON.toJSONString(value, serializeConfig);
-//                    List<String> columnValues = getColumnValues(text);
-//                    for (int i = 0; i < columnValues.size(); i++) {
-//                        String columnName = (i == 0) ? key : (key + i);
-//                        rowUpdateChange.put(new Column(columnName, ColumnValue.fromString(columnValues.get(i))));
-//                    }
-//                }
                 } else { // json数组，ots只支持json数组的嵌套数据类型，需要把驼峰法转成下划线再入库
                     String text = JSON.toJSONString(value, serializeConfig);
                     if (text.matches("^\\[.*\\]$")) {
@@ -218,16 +410,15 @@ public class TableStoreUtils {
      * @param value
      */
     private static List<String> getColumnValues(String value) {
-        int columnLength = 699050;
-        int maxLength = columnLength * 10;
+        int maxLength = columnMaxLength * 10;
         int length = value.length();
 
         List<String> result = new ArrayList<>();
         if (length <= maxLength) {   // 必须小于等于10列才会存储，否则放弃
-            int size = (length % columnLength == 0) ? (length / columnLength) : (length / columnLength + 1);
+            int size = (length % columnMaxLength == 0) ? (length / columnMaxLength) : (length / columnMaxLength + 1);
             for (int i = 0; i < size; i++) {
-                int start = i * columnLength;
-                int end = start + columnLength;
+                int start = i * columnMaxLength;
+                int end = start + columnMaxLength;
                 if (end > length) {
                     result.add(value.substring(start, length));
                 } else {
