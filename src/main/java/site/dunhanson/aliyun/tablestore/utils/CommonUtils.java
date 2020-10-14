@@ -163,7 +163,9 @@ public class CommonUtils {
                         try {
                             obj.put(name, JSON.parseArray(allValues));
                         }catch (Exception e){
-                            obj.put(name, value);    // 其他的 [XXX] 排除掉
+                            if (field.getType().getSimpleName().equals("String")) {    // 其他的 [XXX] 排除掉，但是需要为string类型的才可以
+                                obj.put(name, value);
+                            }
                         }
                     } else {
                         obj.put(name, value);

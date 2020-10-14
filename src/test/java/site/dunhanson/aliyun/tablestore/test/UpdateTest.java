@@ -212,10 +212,17 @@ public class UpdateTest {
     /*查*/
     @Test
     public void get() {
-        Enterprise enterprise = new Enterprise();
-        enterprise.setName("test");
-        // 设置普通字段
-        Enterprise enterprise1 = TableStoreUtils.get(enterprise, Enterprise.class, Arrays.asList("bidi_id"));
+        TermsQuery query = new TermsQuery();
+        query.setFieldName("bidi_id");
+        query.addTerm(ColumnValue.fromLong(211663999468777472L));
+        query.addTerm(ColumnValue.fromLong(218751833451212800L));
+        SearchQuery searchQuery = new SearchQuery();
+        searchQuery.setQuery(query);
+        searchQuery.setLimit(10);
+        searchQuery.setSort(new Sort(Arrays.asList(new FieldSort("bid_number", com.alicloud.openservices.tablestore.model.search.sort.SortOrder.DESC))));
+        Page<Enterprise> search = TableStoreMultipleIndexUtils.search(searchQuery, Enterprise.class);
+
+        System.out.println(search.getList());
     }
     /*新增*/
     @Test
