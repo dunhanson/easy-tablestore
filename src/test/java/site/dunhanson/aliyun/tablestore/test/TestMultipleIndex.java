@@ -300,6 +300,7 @@ public class TestMultipleIndex {
         searchQuery.setSort(new Sort(Arrays.asList(
                 new FieldSort("publishtime", SortOrder.ASC),
                 new FieldSort("docid", SortOrder.DESC))));
+        searchQuery.setSort(new Sort(Arrays.asList(new FieldSort("bidi_id", SortOrder.ASC))));
 
         Page<Document> page = TableStoreMultipleIndexUtils.search(searchQuery, Document.class);
         print(page);

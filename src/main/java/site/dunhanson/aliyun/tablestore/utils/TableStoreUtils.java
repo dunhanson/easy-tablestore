@@ -263,8 +263,9 @@ public class TableStoreUtils {
 
 
     /**
-     * 更新不为空的字段
-     * @param obj   实体类对象实例
+     * 删除字段
+     * @param obj           实体类对象实例
+     * @param columnNames    需要被删除的字段集合
      * @return
      */
     public static int deleteColumns(Object obj, List<String> columnNames) {

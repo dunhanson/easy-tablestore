@@ -3,10 +3,7 @@ package site.dunhanson.aliyun.tablestore.test;
 import com.alibaba.fastjson.JSON;
 import com.alicloud.openservices.tablestore.model.ColumnValue;
 import com.alicloud.openservices.tablestore.model.search.SearchQuery;
-import com.alicloud.openservices.tablestore.model.search.query.BoolQuery;
-import com.alicloud.openservices.tablestore.model.search.query.RangeQuery;
-import com.alicloud.openservices.tablestore.model.search.query.TermQuery;
-import com.alicloud.openservices.tablestore.model.search.query.TermsQuery;
+import com.alicloud.openservices.tablestore.model.search.query.*;
 import com.alicloud.openservices.tablestore.model.search.sort.FieldSort;
 import com.alicloud.openservices.tablestore.model.search.sort.Sort;
 import com.alicloud.openservices.tablestore.model.search.sort.SortOrder;
@@ -117,11 +114,11 @@ public class UpdateTest {
         enterprise.setName("国家电网有限公司12");
         enterprise.setProvince("广东");
 
-        List<EnterpriseProfilePatentItem> list = new ArrayList<>();
+        List<EnterpriseProfilePatentItem> patents = new ArrayList<>();
         EnterpriseProfilePatentItem item = new EnterpriseProfilePatentItem();
         item.setAddress(str);
-        list.add(item);
-        enterprise.setPatents(list);
+        patents.add(item);
+        enterprise.setPatents(patents);
 //
         TableStoreUtils.insert(enterprise);
 //        TableStoreUtils.update(enterprise);
@@ -141,13 +138,123 @@ public class UpdateTest {
 
     }
 
+    /*查bidi_io大于某个100的100条记录（最多一次只能获取 100 条）*/
     @Test
-    public void tee() {
-        Enterprise enterprise = new Enterprise();
-        enterprise.setName("国家电网有限公司12");
-        int i = TableStoreUtils.deleteColumns(enterprise, Arrays.asList("patents2", "province","upgrade_status","a"));
-        System.out.println(i);
+    public void search() {
+        // 条件1 bidi_id > 100
+        RangeQuery rangeQuery = new RangeQuery();
+        rangeQuery.setFieldName("bidi_id");
+        rangeQuery.greaterThan(ColumnValue.fromLong(100));
 
+        // 条件2 name is not null
+        ExistsQuery existQuery = new ExistsQuery();
+        existQuery.setFieldName("name");
+
+        // 合并 bidi_id > 100 and tyc_id is not null
+        BoolQuery boolQuery = new BoolQuery();
+        boolQuery.setMustQueries(new ArrayList<>(Arrays.asList(rangeQuery, existQuery)));
+
+        SearchQuery searchQuery = new SearchQuery();
+        searchQuery.setQuery(boolQuery);
+        searchQuery.setLimit(100);              // 最多一次只能获取 100 条
+        Page<Enterprise> page = TableStoreMultipleIndexUtils.search(searchQuery, Enterprise.class, Arrays.asList("bidi_id","tyc_update_time","tyc_id"));
+
+//        log.warn("offset:" + page.getOffset());
+//        log.warn("limit:" + page.getLimit());
+//        log.warn("totalPage:" + page.getTotalPage());
+//        log.warn("totalCount:" + page.getTotalCount());
+//        log.warn("list:" + page.getList().size());
+//        List<Enterprise> list = page.getList();     //  这个就是结果集
+//
+//        for (Enterprise enterprise : list) {
+//            if (enterprise.getTycId() == null) {
+//                System.out.println(12);
+//            }
+//        }
+
+    }
+
+    @Test
+    public void searchIsNull() {
+        // 条件1 bidi_id > 100
+        RangeQuery rangeQuery = new RangeQuery();
+        rangeQuery.setFieldName("bidi_id");
+        rangeQuery.greaterThan(ColumnValue.fromLong(100));
+
+        // 条件2 tyc_id tyc_id is not null
+        ExistsQuery existQuery = new ExistsQuery();
+        existQuery.setFieldName("tyc_id");
+
+        // 合并 bidi_id > 100 and tyc_id is null
+        BoolQuery boolQuery = new BoolQuery();
+        boolQuery.setMustQueries(new ArrayList<>(Arrays.asList(rangeQuery)));
+        boolQuery.setMustNotQueries(new ArrayList<>(Arrays.asList(existQuery)));
+
+        SearchQuery searchQuery = new SearchQuery();
+        searchQuery.setQuery(boolQuery);
+        searchQuery.setLimit(100);              // 最多一次只能获取 100 条
+        Page<Enterprise> page = TableStoreMultipleIndexUtils.search(searchQuery, Enterprise.class, Arrays.asList("bidi_id","tyc_update_time","tyc_id"));
+
+//        log.warn("offset:" + page.getOffset());
+//        log.warn("limit:" + page.getLimit());
+//        log.warn("totalPage:" + page.getTotalPage());
+//        log.warn("totalCount:" + page.getTotalCount());
+//        log.warn("list:" + page.getList().size());
+//        List<Enterprise> list = page.getList();     //  这个就是结果集
+//
+//        for (Enterprise enterprise : list) {
+//            if (enterprise.getTycId() == null) {
+//                System.out.println(12);
+//            }
+//        }
+
+    }
+    /*查*/
+    @Test
+    public void get() {
+        Enterprise enterprise = new Enterprise();
+        enterprise.setName("test");
+        // 设置普通字段
+        Enterprise enterprise1 = TableStoreUtils.get(enterprise, Enterprise.class, Arrays.asList("bidi_id"));
+    }
+    /*新增*/
+    @Test
+    public void insert() {
+        Enterprise enterprise = new Enterprise();
+        enterprise.setName("test");
+        // 设置普通字段
+        enterprise.setProvince("广东");
+
+        // 设置大字段
+        List<EnterpriseProfilePatentItem> patents = new ArrayList<>();
+        EnterpriseProfilePatentItem item = new EnterpriseProfilePatentItem();
+        item.setAddress("广东天河");
+        patents.add(item);
+        enterprise.setPatents(patents);
+        TableStoreUtils.insert(enterprise);
+    }
+    /*更新*/
+    @Test
+    public void update() {
+        Enterprise enterprise = new Enterprise();
+        enterprise.setName("test");
+        // 设置普通字段
+        enterprise.setProvince("广东");
+
+        // 更新大字段
+        List<EnterpriseProfilePatentItem> patents = new ArrayList<>();
+        EnterpriseProfilePatentItem item = new EnterpriseProfilePatentItem();
+        item.setAddress("广东天河");
+        patents.add(item);
+        enterprise.setPatents(patents);
+        TableStoreUtils.update(enterprise);
+    }
+    /*删除列（使用于，需要清空列的场景）*/
+    @Test
+    public void deleteColumns() {
+        Enterprise enterprise = new Enterprise();
+        enterprise.setName("test");
+        TableStoreUtils.deleteColumns(enterprise, Arrays.asList("patents", "patents","city"));
     }
 
     @Test
@@ -208,6 +315,16 @@ public class UpdateTest {
                 System.out.println(updateSum);
             }
         }
+    }
+
+
+    /*新增*/
+    @Test
+    public void insertTest() {
+        Document document = new Document();
+        document.setArea("华南");
+        document.setProvince("广东");
+        TableStoreUtils.insert(document);
     }
 
 
