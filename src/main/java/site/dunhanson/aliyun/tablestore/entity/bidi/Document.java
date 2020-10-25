@@ -9,10 +9,11 @@ import java.util.List;
  */
 @Data
 public class Document {
-//    注意：前面3+32=35个字段不能变顺序，如需加字段加在后面
+//    注意：前面3+32+1=36个字段不能变顺序，如需加字段加在后面
 //    partitionkey,docid,status,page_time,docchannel,doctitle,dochtmlcon,area,province,city,district,
 //    docstatus,doccontent,dockeywords,cruser,crtime,hitscount,opertime,operuser,publishtime,downscount,auditstatus,
 //    auditdesc,audittime,uuid,web_source_no,web_source_name,info_source,info_type,industry,page_attachments,qstatus,qcodes,qtype,qrange
+//    doctextcon
     /**
      * 分区键[1,500]只用于分区
      */
@@ -188,6 +189,11 @@ public class Document {
      * 资质范围
      */
     private String qrange;
+
+    /**
+     * 文档文本内容
+     */
+    private String doctextcon;
 
 
 

@@ -558,7 +558,7 @@ public class TableStoreUtils {
      */
     public static int batchUpdate(List list) {
         int num = 0;
-        if (list != null) {
+        if (list != null && list.size() > 0) {
             List<List> batches = Lists.partition(list, 200);
             for (List batch : batches) {
                 num += batchWriteFor200(batch, true);
