@@ -28,47 +28,6 @@ import java.util.*;
 public class TestMultipleIndex {
 
     @Test
-    public void te() {
-
-
-//        RangeQuery rangeQuery = new RangeQuery();
-//        rangeQuery.setFieldName("docid");
-//        rangeQuery.setFrom(ColumnValue.fromLong(1L), true);
-//        rangeQuery.setTo(ColumnValue.fromLong(1000L), true);
-//
-//        SearchQuery searchQuery = new SearchQuery();
-//        searchQuery.setQuery(rangeQuery);
-//        searchQuery.setSort(new Sort(Arrays.asList(new FieldSort("docid", SortOrder.ASC))));
-//        searchQuery.setLimit(100);
-//        Page<DocumentExtract> page = TableStoreMultipleIndexUtils.search(searchQuery, DocumentExtract.class, "status");
-//
-//        List<DocumentExtract> list = page.getList();
-//
-//
-//        TableStoreUtils.batchDelete(list);
-//        System.out.println(page.getTotalCount());
-
-
-
-        SearchQuery searchQuery = new SearchQuery();
-        searchQuery.setQuery(new MatchAllQuery());
-        searchQuery.setSort(new Sort(Arrays.asList(new FieldSort("docid", SortOrder.ASC))));
-        searchQuery.setLimit(1);
-        Page<DocumentExtract> page = TableStoreMultipleIndexUtils.search(searchQuery, DocumentExtract.class);
-        System.out.println("min="+page.getList().get(0).getDocid());
-
-
-        SearchQuery searchQuery2 = new SearchQuery();
-        searchQuery2.setQuery(new MatchAllQuery());
-        searchQuery2.setSort(new Sort(Arrays.asList(new FieldSort("docid", SortOrder.DESC))));
-        searchQuery2.setLimit(1);
-        Page<DocumentExtract> page2 = TableStoreMultipleIndexUtils.search(searchQuery2, DocumentExtract.class);
-        System.out.println("max="+page2.getList().get(0).getDocid());
-
-    }
-
-
-    @Test
     public void termQuery() {
         SearchQuery searchQuery = new SearchQuery();
         TermQuery termQuery = new TermQuery(); // 设置查询类型为TermQuery
@@ -99,7 +58,7 @@ public class TestMultipleIndex {
     }
 
     /**
-     * 精准查询（用于 字符串类型）
+     * 精准查询
      */
     @Test
     public void testTermQuery() {
@@ -113,8 +72,9 @@ public class TestMultipleIndex {
         Page<Document> page = TableStoreMultipleIndexUtils.search(searchQuery, Document.class);
         print(page);
     }
+
     /**
-     * 精准查询（用于 字符串类型）
+     * 精准查询
      */
     @Test
     public void testTermsQuery() {
@@ -131,13 +91,13 @@ public class TestMultipleIndex {
 
 
     /**
-     * 匹配查询（用于分词字符串-最大数量语义分词）
+     * 匹配查询（会分词）
      * 例子：我来自广东 会自动根据最长语义分词为 我/来自/广东 三个词语
      */
     @Test
     public void testMatchQuery() {
         MatchQuery query = new MatchQuery();
-        query.setFieldName("dochtmlcon");
+        query.setFieldName("doctextcon");
         query.setText("电梯");
 //        query.setOperator(QueryOperator.AND);     // QueryOperator.OR 代表分词之间的关系为or， QueryOperator.AND 代表分词之间的关系为and
 
@@ -148,7 +108,7 @@ public class TestMultipleIndex {
     }
 
     /**
-     * 短语匹配查询（用于分词字符串-最大数量语义分词）
+     * 短语匹配查询（不分词）
      * 例子：我来自广东 就等于 我来自广东
      */
     @Test
@@ -164,12 +124,12 @@ public class TestMultipleIndex {
     }
 
     /**
-     * 前缀查询（用于分词字符串-最大数量语义分词 或者 字符串）
+     * 前缀查询
      */
     @Test
     public void testPrefixQuery() {
         PrefixQuery query = new PrefixQuery();
-        query.setFieldName("dochtmlcon");
+        query.setFieldName("doctitle");
         query.setPrefix("广东");
 
         SearchQuery searchQuery = new SearchQuery();
@@ -186,8 +146,6 @@ public class TestMultipleIndex {
     public void testRangeQuery() {
         RangeQuery query = new RangeQuery();
         query.setFieldName("publishtime");
-
-
         query.setFrom(ColumnValue.fromString("2020-01-01 00:00:00"), true);
         query.setTo(ColumnValue.fromString("2020-01-03 00:00:00"), true);
 
@@ -204,9 +162,9 @@ public class TestMultipleIndex {
     @Test
     public void testBoolQuery() {
         // 条件1 docid < 4
-        RangeQuery rangeQuery1 = new RangeQuery();
-        rangeQuery1.setFieldName("docid");
-        rangeQuery1.lessThan(ColumnValue.fromLong(4));
+        RangeQuery rangeQuery = new RangeQuery();
+        rangeQuery.setFieldName("docid");
+        rangeQuery.lessThan(ColumnValue.fromLong(4));
 
 
         // 条件2 (docchannel = 52 and (province = 广东 or province = 广西))
@@ -218,13 +176,13 @@ public class TestMultipleIndex {
         termsQuery.setFieldName("province");
         termsQuery.addTerm(ColumnValue.fromString("广东"));
         termsQuery.addTerm(ColumnValue.fromString("广西"));
-        BoolQuery boolQuery1 = new BoolQuery();
-        boolQuery1.setMustQueries(Arrays.asList(termQuery1, termsQuery));
+        BoolQuery boolQuery = new BoolQuery();
+        boolQuery.setMustQueries(Arrays.asList(termQuery1, termsQuery));
 
 
         // 组合：条件1/条件2
         BoolQuery query = new BoolQuery();
-        query.setShouldQueries(Arrays.asList(rangeQuery1, boolQuery1));
+        query.setShouldQueries(Arrays.asList(rangeQuery, boolQuery));
 
         SearchQuery searchQuery = new SearchQuery();
         searchQuery.setQuery(query);
@@ -235,13 +193,11 @@ public class TestMultipleIndex {
 
     /**
      * 嵌套类型查询查询 格式：sub_docs_json:[{"win_tenderer":"比地1"},{"win_tenderer":"比地2"},{"win_tenderer":"比地3"},{"win_tenderer":"比地4"}]
-     *
      * sub_docs_json.win_tenderer=比地1 比地2 比地3 都能查到此公告
      */
     @Test
     public void testNestedQuery() {
         NestedQuery query = new NestedQuery();
-
         // 配置嵌套字段
         query.setPath("sub_docs_json");
 
@@ -253,8 +209,6 @@ public class TestMultipleIndex {
         query.setScoreMode(ScoreMode.None);
 
         NestedQuery query2 = new NestedQuery();
-
-        // 配置嵌套字段
         query2.setPath("sub_docs_json");
 
         // 需要查询的查询
@@ -274,33 +228,6 @@ public class TestMultipleIndex {
         searchQuery.setSort(new Sort(Arrays.asList(
                 new FieldSort("publishtime", SortOrder.ASC),
                 new FieldSort("docid", SortOrder.DESC))));
-
-        Page<Document> page = TableStoreMultipleIndexUtils.search(searchQuery, Document.class);
-        print(page);
-    }
-
-    @Test
-    public void testNestedQuery2() {
-        NestedQuery query = new NestedQuery();
-
-        // 配置嵌套字段
-        query.setPath("sub_docs_json");
-
-        // 需要查询的查询
-        TermQuery termQuery = new TermQuery(); // 构造NestedQuery的子查询
-        termQuery.setFieldName("sub_docs_json.win_tenderer"); // 设置字段名，注意带有Nested列的前缀
-        termQuery.setTerm(ColumnValue.fromString("比地1")); // 设置要查询的值
-        query.setQuery(termQuery);
-        query.setScoreMode(ScoreMode.None);
-
-        SearchQuery searchQuery = new SearchQuery();
-        searchQuery.setQuery(query);
-
-        // 排序 publishtime asc,docid asc
-        searchQuery.setSort(new Sort(Arrays.asList(
-                new FieldSort("publishtime", SortOrder.ASC),
-                new FieldSort("docid", SortOrder.DESC))));
-        searchQuery.setSort(new Sort(Arrays.asList(new FieldSort("bidi_id", SortOrder.ASC))));
 
         Page<Document> page = TableStoreMultipleIndexUtils.search(searchQuery, Document.class);
         print(page);

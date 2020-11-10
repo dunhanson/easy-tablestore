@@ -13,7 +13,9 @@ import site.dunhanson.aliyun.tablestore.entity.Page;
 import site.dunhanson.aliyun.tablestore.entity.bidi.Document;
 import site.dunhanson.aliyun.tablestore.entity.bidi.DocumentExtract;
 import site.dunhanson.aliyun.tablestore.entity.bidi.DocumentTemp;
+import site.dunhanson.aliyun.tablestore.entity.bidi.SubDocument;
 import site.dunhanson.aliyun.tablestore.entity.bidi.enterprise.*;
+import site.dunhanson.aliyun.tablestore.utils.CommonUtils;
 import site.dunhanson.aliyun.tablestore.utils.TableStoreMultipleIndexUtils;
 import site.dunhanson.aliyun.tablestore.utils.TableStoreUtils;
 
@@ -224,21 +226,101 @@ public class UpdateTest {
 
         System.out.println(search.getList());
     }
+
+    @Test
+    public void tete() {
+//        RangeQuery query = new RangeQuery();
+//        query.setFieldName("docid");
+//        query.setFrom(ColumnValue.fromLong(103567831), true);
+//        query.setTo(ColumnValue.fromLong(103567831), true);
+
+
+        while(true){
+            try {
+
+                RangeQuery query = new RangeQuery();
+                query.setFieldName("docid");
+                query.setFrom(ColumnValue.fromLong(11), true);
+                query.setTo(ColumnValue.fromLong(203567831), true);
+
+                SearchQuery searchQuery = new SearchQuery();
+                searchQuery.setQuery(query);
+                searchQuery.setLimit(100);
+                Page<DocumentExtract> page = TableStoreMultipleIndexUtils.search(searchQuery, DocumentExtract.class);
+
+                List<DocumentExtract> list = page.getList();
+                if (list != null && list.size() > 0) {
+                    TableStoreUtils.batchDelete(list);
+                }
+//                else{
+//                    break;
+//                }
+                System.out.println(page.getTotalCount());
+                Thread.sleep(1000);
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private boolean insert2() {
+        RangeQuery query = new RangeQuery();
+        query.setFieldName("status");
+        query.setFrom(ColumnValue.fromLong(51), true);
+        query.setTo(ColumnValue.fromLong(100), true);
+
+
+        SearchQuery searchQuery = new SearchQuery();
+        searchQuery.setQuery(query);
+        searchQuery.setSort(new Sort(Arrays.asList(new FieldSort("docid", SortOrder.DESC))));
+        searchQuery.setLimit(100);
+
+        List<String> columns = new ArrayList<>();
+        columns.add("sub_docs_json");
+        columns.add("status");
+        Page<Document> page = TableStoreMultipleIndexUtils.search(searchQuery, Document.class, columns);
+
+        List<Document> list = page.getList();
+        if (list != null || list.size() > 0) {
+            List<Document> list1 = new ArrayList<>();
+            List<Document> list2 = new ArrayList<>();
+            for (Document document : list) {
+                List<SubDocument> subDocsJson = document.getSubDocsJson();
+                if (subDocsJson != null && subDocsJson.size() > 0) {
+                    document.setStatus(Long.valueOf(CommonUtils.getRandomNumber(201, 300)));
+                    list1.add(document);
+                } else {
+                    document.setStatus(Long.valueOf(CommonUtils.getRandomNumber(1, 50)));
+                    list2.add(document);
+                }
+            }
+            TableStoreUtils.batchUpdate(list1);
+            TableStoreUtils.batchUpdate(list2);
+            return true;
+        } else {
+            return false;
+        }
+
+    }
+
+
     /*新增*/
     @Test
     public void insert() {
-        Enterprise enterprise = new Enterprise();
-        enterprise.setName("test");
-        // 设置普通字段
-        enterprise.setProvince("广东");
-
-        // 设置大字段
-        List<EnterpriseProfilePatentItem> patents = new ArrayList<>();
-        EnterpriseProfilePatentItem item = new EnterpriseProfilePatentItem();
-        item.setAddress("广东天河");
-        patents.add(item);
-        enterprise.setPatents(patents);
-        TableStoreUtils.insert(enterprise);
+        int i = 0;
+        while (true) {
+            try {
+                if (insertTest()) {
+                    log.warn("第{}次更新成功，休息1妙", i);
+                    Thread.sleep(1000);
+                } else {
+                    log.warn("第{}次已经处理完...", i);
+                    break;
+                }
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+        }
     }
     /*更新*/
     @Test
@@ -326,12 +408,31 @@ public class UpdateTest {
 
 
     /*新增*/
-    @Test
-    public void insertTest() {
-        Document document = new Document();
-        document.setArea("华南");
-        document.setProvince("广东");
-        TableStoreUtils.insert(document);
+//    @Test
+    public boolean insertTest() {
+        // 条件2 nicknames is not null
+        ExistsQuery existQuery = new ExistsQuery();
+        existQuery.setFieldName("nicknames");
+
+        // 合并 bidi_id > 100 and tyc_id is null
+        BoolQuery boolQuery = new BoolQuery();
+        boolQuery.setMustNotQueries(new ArrayList<>(Arrays.asList(existQuery)));
+
+        SearchQuery searchQuery = new SearchQuery();
+        searchQuery.setQuery(boolQuery);
+        searchQuery.setLimit(100);              // 最多一次只能获取 100 条
+        Page<Enterprise> page = TableStoreMultipleIndexUtils.search(searchQuery, Enterprise.class, Arrays.asList("nicknames"));
+        List<Enterprise> list = page.getList();
+        if (list != null && list.size() > 0) {
+            for (Enterprise enterprise : list) {
+                enterprise.setNicknames(enterprise.getName());
+                enterprise.setUpgradeStatus(null);
+            }
+            TableStoreUtils.batchUpdate(list);
+            return true;
+        } else {
+            return false;
+        }
     }
 
 
