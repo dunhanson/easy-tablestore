@@ -15,6 +15,7 @@ import org.junit.Test;
 import site.dunhanson.aliyun.tablestore.entity.bidi.Document;
 import site.dunhanson.aliyun.tablestore.entity.Page;
 import site.dunhanson.aliyun.tablestore.entity.bidi.DocumentExtract;
+import site.dunhanson.aliyun.tablestore.entity.bidi.enterprise.Enterprise;
 import site.dunhanson.aliyun.tablestore.utils.Store;
 import site.dunhanson.aliyun.tablestore.utils.TableStoreMultipleIndexUtils;
 import site.dunhanson.aliyun.tablestore.utils.TableStoreUtils;
@@ -233,6 +234,56 @@ public class TestMultipleIndex {
         print(page);
     }
 
+    /**
+     * bidi_id > 100 and tyc_id is not null limit 100
+     */
+    @Test
+    public void searchIsNotNull() {
+        // 条件1 bidi_id > 100
+        RangeQuery rangeQuery = new RangeQuery();
+        rangeQuery.setFieldName("bidi_id");
+        rangeQuery.greaterThan(ColumnValue.fromLong(100));
+
+        // 条件2 name is not null
+        ExistsQuery existQuery = new ExistsQuery();
+        existQuery.setFieldName("name");
+
+        // 合并 bidi_id > 100 and tyc_id is not null
+        BoolQuery boolQuery = new BoolQuery();
+        boolQuery.setMustQueries(new ArrayList<>(Arrays.asList(rangeQuery, existQuery)));
+
+        SearchQuery searchQuery = new SearchQuery();
+        searchQuery.setQuery(boolQuery);
+        searchQuery.setLimit(100);              // 最多一次只能获取 100 条
+        Page<Enterprise> page = TableStoreMultipleIndexUtils.search(searchQuery, Enterprise.class, Arrays.asList("bidi_id","tyc_update_time","tyc_id"));
+
+    }
+
+    /**
+     * bidi_id > 100 and tyc_id is null limit 100
+     */
+    @Test
+    public void searchIsNull() {
+        // 条件1 bidi_id > 100
+        RangeQuery rangeQuery = new RangeQuery();
+        rangeQuery.setFieldName("bidi_id");
+        rangeQuery.greaterThan(ColumnValue.fromLong(100));
+
+        // 条件2 tyc_id tyc_id is not null
+        ExistsQuery existQuery = new ExistsQuery();
+        existQuery.setFieldName("tyc_id");
+
+        // 合并 bidi_id > 100 and tyc_id is null
+        BoolQuery boolQuery = new BoolQuery();
+        boolQuery.setMustQueries(new ArrayList<>(Arrays.asList(rangeQuery)));
+        boolQuery.setMustNotQueries(new ArrayList<>(Arrays.asList(existQuery)));
+
+        SearchQuery searchQuery = new SearchQuery();
+        searchQuery.setQuery(boolQuery);
+        searchQuery.setLimit(100);              // 最多一次只能获取 100 条
+        Page<Enterprise> page = TableStoreMultipleIndexUtils.search(searchQuery, Enterprise.class, Arrays.asList("bidi_id","tyc_update_time","tyc_id"));
+    }
+
     private void print(Page page) {
         log.warn("offset:" + page.getOffset());
         log.warn("limit:" + page.getLimit());
@@ -243,5 +294,5 @@ public class TestMultipleIndex {
             log.warn(obj);
         });
     }
-    
+
 }

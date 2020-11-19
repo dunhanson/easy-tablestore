@@ -210,7 +210,7 @@ public class Document {
     private String projectCode;
 
     /**
-     * 项目地址
+     * 项目地址（暂时没提取）
      */
     private String projectAddr;
 
@@ -220,7 +220,7 @@ public class Document {
     private String tenderee;
 
     /**
-     * 招标人地址
+     * 招标人地址（暂时没提取）
      */
     private String tendereeAddr;
 

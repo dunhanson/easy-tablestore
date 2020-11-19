@@ -187,7 +187,7 @@ public class TableStoreMultipleIndexUtils {
         logStr.append("ElapsedTime：" + ChronoUnit.MILLIS.between(startTime, endTime) + "ms");
         logStr.append("\n");
         logStr.append("---------------------------------------------------------------");
-        log.info(logStr.toString(), "TableStore Search");
+        log.debug(logStr.toString(), "TableStore Search");
         return page;
     }
 
