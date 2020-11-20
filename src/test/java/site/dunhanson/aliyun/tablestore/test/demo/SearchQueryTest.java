@@ -4,7 +4,7 @@ import com.alicloud.openservices.tablestore.model.ColumnValue;
 import com.alicloud.openservices.tablestore.model.search.SearchQuery;
 import com.alicloud.openservices.tablestore.model.search.query.*;
 import org.junit.Test;
-import site.dunhanson.aliyun.tablestore.entity.bidi.Document;
+import site.dunhanson.aliyun.tablestore.entity.Document;
 import site.dunhanson.aliyun.tablestore.utils.TableStoreMultipleIndexUtils;
 
 import java.util.ArrayList;
