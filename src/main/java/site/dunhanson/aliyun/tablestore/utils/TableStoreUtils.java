@@ -1122,6 +1122,78 @@ public class TableStoreUtils {
         return result;
     }
 
+    /**
+     * 根据一级索引查找所有
+     * @param clazz             实体类
+     * @param columnsToGet     添加要读取的列集合
+     * @param limit             获取的条数（如果小1则全查）
+     * @param <T>
+     * @return
+     */
+    public static <T> List<T> getRangeByPrimaryKey(Class<T> clazz, Collection<String> columnsToGet, int limit) {
+        // 获取表的配置信息
+        TableInfo tableInfo = CommonUtils.getTableInfo(clazz);
+        SyncClient client = Store.getInstance().getSyncClient();
+
+        // 1、设置主表PK（任意范围）
+        PrimaryKeyBuilder startPrimaryKeyBuilder = PrimaryKeyBuilder.createPrimaryKeyBuilder();
+        PrimaryKeyBuilder endPrimaryKeyBuilder = PrimaryKeyBuilder.createPrimaryKeyBuilder();
+
+        List<String> primaryKeyList = tableInfo.getPrimaryKey();
+        for (String key : primaryKeyList) {
+            startPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.INF_MIN); // 主表PK最小值。
+            endPrimaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.INF_MAX); // 主表PK最大值。
+        }
+
+        // 2、查询
+        RangeRowQueryCriteria rangeRowQueryCriteria = new RangeRowQueryCriteria(tableInfo.getTableName());
+        rangeRowQueryCriteria.setInclusiveStartPrimaryKey(startPrimaryKeyBuilder.build());  // 开始主键
+        rangeRowQueryCriteria.setExclusiveEndPrimaryKey(endPrimaryKeyBuilder.build());      // 结束主键
+        rangeRowQueryCriteria.setMaxVersions(1);                                            // 设置读取最新版本
+        if (columnsToGet != null && columnsToGet.size() > 0) {                              // 指定获取的列
+            rangeRowQueryCriteria.addColumnsToGet(columnsToGet);
+        }
+
+        if (limit > 0) {                                                                    // 默认一次扫描5000，如果有指定limit，设置成1000
+            rangeRowQueryCriteria.setLimit(1000);
+        }
+
+        // 2.1、循环扫描（因为数据是分区的，所以需要分区扫描）
+        List<T> result = new LinkedList<>();
+        boolean completed = false;
+        long index = 0;
+        while (true) {
+            log.debug("第{}获取,{}->{}，准备获取数量={}", ++index, rangeRowQueryCriteria.getLimit());
+            GetRangeRequest getRangeRequest = new GetRangeRequest(rangeRowQueryCriteria);
+            GetRangeResponse getRangeResponse = client.getRange(getRangeRequest);
+            List<Row> rows = getRangeResponse.getRows();
+            log.debug("第{}获取，成功获取的数量={}", index, rows.size());
+            // 1、处理 limit
+            if (limit > 0) {
+                for (Row row : rows) {
+                    if (result.size() >= limit) {
+                        completed = true;
+                        break;
+                    } else {
+                        result.add(CommonUtils.rowToEntity(row, clazz));
+                    }
+                }
+            } else {
+                for (Row row : rows) {
+                    result.add(CommonUtils.rowToEntity(row, clazz));
+                }
+            }
+
+            // 若nextStartPrimaryKey不为null,可能扫描到分表的末尾了，则继续读取。
+            if (getRangeResponse.getNextStartPrimaryKey() != null && !completed) {
+                rangeRowQueryCriteria.setInclusiveStartPrimaryKey(getRangeResponse.getNextStartPrimaryKey());
+            } else {
+                break;
+            }
+        }
+        return result;
+    }
+
 
 
 }
