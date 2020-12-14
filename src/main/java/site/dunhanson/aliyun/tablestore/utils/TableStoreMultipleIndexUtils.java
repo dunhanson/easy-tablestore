@@ -6,6 +6,9 @@ import com.alicloud.openservices.tablestore.model.Row;
 import com.alicloud.openservices.tablestore.model.search.SearchQuery;
 import com.alicloud.openservices.tablestore.model.search.SearchRequest;
 import com.alicloud.openservices.tablestore.model.search.SearchResponse;
+import com.alicloud.openservices.tablestore.model.search.groupby.GroupByBuilders;
+import com.alicloud.openservices.tablestore.model.search.groupby.GroupByField;
+import com.alicloud.openservices.tablestore.model.search.groupby.GroupByFieldResultItem;
 import com.alicloud.openservices.tablestore.model.search.query.*;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -15,6 +18,7 @@ import site.dunhanson.aliyun.tablestore.entity.TableInfo;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -190,6 +194,68 @@ public class TableStoreMultipleIndexUtils {
         log.debug(logStr.toString(), "TableStore Search");
         return page;
     }
+
+
+
+
+
+//    /**
+//     * 所有商品中每一个类别各有多少个，且统计每一个类别的价格最大值和最小值。
+//     * 返回结果举例："水果：5个（其中价格最贵15元，最便宜3元），洗漱用品：10个（其中价格最贵98元，最便宜1元），电子设备：3个（其中价格最贵8699元，最便宜2300元），其它：15个（其中价格最贵1000
+//     * 元，最便宜80元）"。
+//     */
+//    public static void groupByField() {
+////        SearchRequest searchRequest = SearchRequest.newBuilder()
+////                .tableName("document")
+////                .indexName("document_index")
+////                .searchQuery(
+////                        SearchQuery.newBuilder()
+////                                .query(QueryBuilders.matchPhrase("doctextcon", "显示器"))
+////                                .limit(0)
+////                                .addGroupBy(GroupByBuilders
+////                                        .groupByField("group1", "tenderee")
+////                                )
+////                                .build())
+////                .build();
+//
+//
+//        MatchPhraseQuery doctextconMatchPhraseQuery = new MatchPhraseQuery();
+//        doctextconMatchPhraseQuery.setFieldName("doctextcon");
+//        doctextconMatchPhraseQuery.setText("显示器");
+//
+//        TermQuery docchannelTermQuery = new TermQuery();
+//        docchannelTermQuery.setFieldName("docchannel");
+//        docchannelTermQuery.setTerm(ColumnValue.fromLong(52L));
+//
+//
+//        RangeQuery pageTimeRangeQuery = new RangeQuery();
+//        pageTimeRangeQuery.setFieldName("page_time");
+//        pageTimeRangeQuery.setFrom(ColumnValue.fromString("2020-01-01"), true);
+//        pageTimeRangeQuery.setTo(ColumnValue.fromString("2020-12-31"), true);
+//
+//
+//        BoolQuery boolQuery = new BoolQuery();
+//        boolQuery.setMustQueries(Arrays.asList(doctextconMatchPhraseQuery, docchannelTermQuery, pageTimeRangeQuery));
+//
+//        SearchQuery searchQuery = new SearchQuery();
+//        searchQuery.setQuery(boolQuery);
+//        searchQuery.setLimit(0);
+//
+//        GroupByField.Builder builder = GroupByBuilders.groupByField("group1", "tenderee");
+//        searchQuery.setGroupByList(Arrays.asList(builder.build()));
+//
+//        SearchRequest searchRequest = new SearchRequest("document", "document_index", searchQuery);
+//
+//        //执行查询。
+//        SearchResponse resp = Store.getInstance().getSyncClient().search(searchRequest);
+//        //获取统计聚合结果。
+//        for (GroupByFieldResultItem item : resp.getGroupByResults().getAsGroupByFieldResult("group1").getGroupByFieldResultItems()) {
+//            System.out.println(item.getKey() + "-" + item.getRowCount());
+//        }
+//    }
+
+
+
 
     /**
      * 获取结果集

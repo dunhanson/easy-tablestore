@@ -156,13 +156,14 @@ public class TableStoreUtils {
         SyncClient client = Store.getInstance().getSyncClient();
 
 
-        JSONObject jsonObject = (JSONObject) JSON.toJSON(obj);
+        Map<String, Field> fieldMap = CommonUtils.getFieldMap(obj.getClass());
 
         // 1、构造主键
         PrimaryKeyBuilder primaryKeyBuilder = PrimaryKeyBuilder.createPrimaryKeyBuilder();
         List<String> primaryKeyList = aliasBasicInfo.getPrimaryKey();
         for (String key : primaryKeyList) {
-            Object value = jsonObject.get(CommonUtils.underlineToHump(key));
+            Field field = fieldMap.get(CommonUtils.underlineToHump(key));
+            Object value = CommonUtils.getFieldValue(field, obj);
             if (value.getClass().getSimpleName().equals("Long")) {
                 primaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromLong((Long) value));
             } else {
@@ -174,9 +175,10 @@ public class TableStoreUtils {
 
         // 2、设置其他属性
         StringBuilder stringBuilder = new StringBuilder();
-        for (Map.Entry<String, Object> map : jsonObject.entrySet()) {
+        for (Map.Entry<String, Field> map : fieldMap.entrySet()) {
             String key = map.getKey();
-            Object value = map.getValue();
+            Field field = map.getValue();
+            Object value = CommonUtils.getFieldValue(field, obj);
             key = CommonUtils.humpToUnderline(key);     // 驼峰转下划线
             if (!primaryKeyList.contains(key) && value != null) {       // 非主键 非空 判断
                 if (value.getClass().getSimpleName().equals("String")) {      // 待完善 其他类型当成字符串处理，目前是够用的
@@ -350,13 +352,14 @@ public class TableStoreUtils {
      * @return
      */
     private static RowUpdateChange getRowUpdateChange(Object obj, TableInfo tableInfo) {
-        JSONObject jsonObject = (JSONObject) JSON.toJSON(obj);
+        Map<String, Field> fieldMap = CommonUtils.getFieldMap(obj.getClass());
 
         // 1、构造主键
         PrimaryKeyBuilder primaryKeyBuilder = PrimaryKeyBuilder.createPrimaryKeyBuilder();
         List<String> primaryKeyList = tableInfo.getPrimaryKey();
         for (String key : primaryKeyList) {
-            Object value = jsonObject.get(CommonUtils.underlineToHump(key));
+            Field field = fieldMap.get(CommonUtils.underlineToHump(key));
+            Object value = CommonUtils.getFieldValue(field, obj);
             if (value.getClass().getSimpleName().equals("Long")) {
                 primaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromLong((Long) value));
             } else {
@@ -367,9 +370,10 @@ public class TableStoreUtils {
 
         // 2、设置其他属性
         RowUpdateChange rowUpdateChange = new RowUpdateChange(tableInfo.getTableName(), primaryKey);
-        for (Map.Entry<String, Object> map : jsonObject.entrySet()) {
+        for (Map.Entry<String, Field> map : fieldMap.entrySet()) {
             String key = map.getKey();
-            Object value = map.getValue();
+            Field field = map.getValue();
+            Object value = CommonUtils.getFieldValue(field, obj);
             key = CommonUtils.humpToUnderline(key);     // 驼峰转下划线
             if (!primaryKeyList.contains(key) && value != null) {       // 非主键 非空 判断
                 if (value.getClass().getSimpleName().equals("String")) {      // 待完善 其他类型当成字符串处理，目前是够用的
@@ -450,13 +454,14 @@ public class TableStoreUtils {
      * @return
      */
     private static RowPutChange getRowPutChange(Object obj, TableInfo tableInfo) {
-        JSONObject jsonObject = (JSONObject) JSON.toJSON(obj);
+        Map<String, Field> fieldMap = CommonUtils.getFieldMap(obj.getClass());
 
         // 1、构造主键
         PrimaryKeyBuilder primaryKeyBuilder = PrimaryKeyBuilder.createPrimaryKeyBuilder();
         List<String> primaryKeyList = tableInfo.getPrimaryKey();
         for (String key : primaryKeyList) {
-            Object value = jsonObject.get(CommonUtils.underlineToHump(key));
+            Field field = fieldMap.get(CommonUtils.underlineToHump(key));
+            Object value = CommonUtils.getFieldValue(field, obj);
             if (value.getClass().getSimpleName().equals("Long")) {
                 primaryKeyBuilder.addPrimaryKeyColumn(key, PrimaryKeyValue.fromLong((Long) value));
             } else {
@@ -467,9 +472,10 @@ public class TableStoreUtils {
 
         // 2、设置其他属性
         RowPutChange rowPutChange = new RowPutChange(tableInfo.getTableName(), primaryKey);
-        for (Map.Entry<String, Object> map : jsonObject.entrySet()) {
+        for (Map.Entry<String, Field> map : fieldMap.entrySet()) {
             String key = map.getKey();
-            Object value = map.getValue();
+            Field field = map.getValue();
+            Object value = CommonUtils.getFieldValue(field, obj);
             key = CommonUtils.humpToUnderline(key);     // 驼峰转下划线
             if (!primaryKeyList.contains(key) && value != null) {       // 非主键 非空 判断
                 if (value.getClass().getSimpleName().equals("String")) {      // 待完善 其他类型当成字符串处理，目前是够用的
@@ -486,14 +492,6 @@ public class TableStoreUtils {
                     SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                     String format = sdf.format(value);
                     rowPutChange.addColumn(new Column(key, ColumnValue.fromString(format)));
-//                } else if (value.toString().matches("^\\[.*\\]$")) { // json数组，ots只支持json数组的嵌套数据类型，需要把驼峰法转成下划线再入库
-//                    String text = JSON.toJSONString(value, serializeConfig);
-//                    List<String> columnValues = getColumnValues(text);
-//                    for (int i = 0; i < columnValues.size(); i++) {
-//                        String columnName = (i == 0) ? key : (key + i);
-//                        rowPutChange.addColumn(new Column(columnName, ColumnValue.fromString(columnValues.get(i))));
-//                    }
-//                }
                 } else { // json数组，ots只支持json数组的嵌套数据类型，需要把驼峰法转成下划线再入库
                     String text = JSON.toJSONString(value, serializeConfig);
                     if (text.matches("^\\[.*\\]$")) {
